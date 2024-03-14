@@ -1,97 +1,666 @@
-import pandas as pd
-import numpy as np
-import os
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from tqdm import tqdm
-from sklearn.model_selection import train_test_split
-import csv
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import csv
-import os
-import re
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer
-import tensorflow as tf
-from joblib import dump, load
-import ltn
-import math
-import wandb
-
-dataset_path = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU'
-
-PGB_path = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/PGB/PGB'
-RGB_path = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/RGB/RGB'
-
-# Specify the CSV file path
-csv_file = '/home/ubuntu/dds_paper/DDS_Paper/data/data_robust.csv'
-preprocessor_file = 'preprocessor.joblib'
-
-train_path = '/home/ubuntu/dds_paper/DDS_Paper/data/train.csv'
-val_path = '/home/ubuntu/dds_paper/DDS_Paper/data/val.csv'
-
-np.random.seed(45)
-
-# Set the chunk size for reading the CSV
-chunk_size = 100000  # Adjust the chunk size according to your memory limitations
-
-
-
-def extract_fault(file_name):
-    fault_mapping = {
-        '0Health': 'HEA', '1Chipped': 'CTF', '2Miss': 'MTF', 
-        '3Root': 'RCF', '4Surface': 'SWF', '5Ball': 'BWF', 
-        '6Combination': 'CWF', '7Inner': 'IRF', '8Outer': 'ORF'
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import os\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from sklearn.preprocessing import LabelEncoder\n",
+    "from tqdm import tqdm\n",
+    "import pandas as pd\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "import csv\n",
+    "import pandas as pd\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "import csv\n",
+    "from tqdm import tqdm\n",
+    "import os\n",
+    "import re\n",
+    "from sklearn.preprocessing import StandardScaler, OneHotEncoder\n",
+    "from sklearn.compose import ColumnTransformer\n",
+    "import tensorflow as tf\n",
+    "from joblib import dump, load\n",
+    "import ltn\n",
+    "import csv\n",
+    "import math\n",
+    "import wandb\n",
+    "\n",
+    "\n",
+    "dataset_path = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU'\n",
+    "\n",
+    "PGB_path = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/PGB/PGB'\n",
+    "RGB_path = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/RGB/RGB'\n",
+    "\n",
+    "# Specify the CSV file path\n",
+    "csv_file = '/home/ubuntu/dds_paper/DDS_Paper/data/data_robust.csv'\n",
+    "preprocessor_file = 'preprocessor.joblib'\n",
+    "\n",
+    "train_path = '/home/ubuntu/dds_paper/DDS_Paper/data/train.csv'\n",
+    "val_path = '/home/ubuntu/dds_paper/DDS_Paper/data/val.csv'\n",
+    "\n",
+    "np.random.seed(45)\n",
+    "\n",
+    "# Set the chunk size for reading the CSV\n",
+    "chunk_size = 100000  # Adjust the chunk size according to your memory limitations"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Processing Variable_speed Variable_speed: 0file [00:00, ?file/s]\n",
+      "Processing Variable_speed Experiment8:   0%|          | 0/9 [00:00<?, ?file/s]"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Processing Variable_speed Experiment8: 100%|██████████| 9/9 [00:08<00:00,  1.06file/s]\n",
+      "Processing Variable_speed Experiment4: 100%|██████████| 9/9 [00:06<00:00,  1.48file/s]\n",
+      "Processing Variable_speed Experiment6: 100%|██████████| 9/9 [00:06<00:00,  1.37file/s]\n",
+      "Processing Variable_speed Experiment2: 100%|██████████| 9/9 [00:05<00:00,  1.61file/s]\n",
+      "Processing Variable_speed Experiment5: 100%|██████████| 9/9 [00:07<00:00,  1.26file/s]\n",
+      "Processing Variable_speed Experiment1: 100%|██████████| 9/9 [00:06<00:00,  1.47file/s]\n",
+      "Processing Variable_speed Experiment9: 100%|██████████| 9/9 [00:05<00:00,  1.73file/s]\n",
+      "Processing Variable_speed Experiment7: 100%|██████████| 9/9 [00:06<00:00,  1.44file/s]\n",
+      "Processing Variable_speed Experiment3: 100%|██████████| 9/9 [00:05<00:00,  1.72file/s]\n",
+      "Processing Variable_speed Experiment10: 100%|██████████| 9/9 [00:07<00:00,  1.14file/s]\n",
+      "Processing 40_0 : 100%|██████████| 9/9 [00:05<00:00,  1.73file/s]\n",
+      "Processing 30_4 : 100%|██████████| 9/9 [00:05<00:00,  1.52file/s]\n",
+      "Processing 30_3 : 100%|██████████| 9/9 [00:09<00:00,  1.01s/file]\n",
+      "Processing 20_0 : 100%|██████████| 9/9 [00:05<00:00,  1.59file/s]\n",
+      "Processing 30_5 : 100%|██████████| 9/9 [00:06<00:00,  1.33file/s]\n",
+      "Processing 30_2 : 100%|██████████| 9/9 [00:05<00:00,  1.73file/s]\n",
+      "Processing 50_0 : 100%|██████████| 9/9 [00:05<00:00,  1.74file/s]\n",
+      "Processing 30_0 : 100%|██████████| 9/9 [00:05<00:00,  1.73file/s]\n",
+      "Processing 30_1 : 100%|██████████| 9/9 [00:06<00:00,  1.43file/s]\n"
+     ]
     }
-    for key, value in fault_mapping.items():
-        if key in file_name:
-            return value
-    return None
-
-def make_csv_writer(csv_file):
-    csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(['Channel1', 'Channel2', 'Channel3', 'Channel4', 'Channel5', 'Channel6', 'Channel7', 'Channel8', 'Fault'])
-    return csv_writer
-
-def generate_csv(output_directory, root_path, speed, experiment, files):
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
-    
-    filename_suffix = f"{speed}_{experiment}" if experiment else speed
-    output_file_path = os.path.join(output_directory, f"PGB_{filename_suffix}.csv")
-    rows_written = False  # Initialize a flag to track if any rows are written
-    
-    with open(output_file_path, 'w', newline='', encoding='utf-8') as csvfile:
-        csv_writer = make_csv_writer(csvfile)
-        
-        for file in tqdm(files, desc=f"Processing {filename_suffix}", unit="file"):
-            fault_type = extract_fault(file)
-            # Adjust the construction of file_path here
-            file_path = os.path.join(root_path, file)  # Use root_path directly
-            
-            data = pd.read_csv(file_path, sep='\t', header=None, encoding='ISO-8859-1', skiprows=1, nrows=10000)
-            if not data.empty:
-                rows_written = True  # Set flag to True if we write any data rows
-                for index, row in data.iterrows():
-                    csv_writer.writerow(row[:8].tolist() + [fault_type])
-                    
-    # Check if any data rows were written, delete the CSV file if not
-    if not rows_written:
-        os.remove(output_file_path)
-        print(f"No data was written. Deleted the file: {output_file_path}")
-
-
-def process_pgb_data(data_root_folder, output_directory):
-    for root, dirs, files in os.walk(data_root_folder):
-        parts = root.split(os.sep)
-        if 'Variable_speed' in parts or ('PGB' in parts and files):
-            speed = parts[-2] if 'Variable_speed' in parts else parts[-1]
-            experiment_dir = parts[-1] if 'Variable_speed' in parts else ''
-            generate_csv(output_directory, root, speed, experiment_dir, files)
-
-# Example usage remains the same:
-data_root_folder = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/PGB/PGB'
-output_directory = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs'
-process_pgb_data(data_root_folder, output_directory)
+   ],
+   "source": [
+    "import os\n",
+    "import csv\n",
+    "import pandas as pd\n",
+    "from tqdm import tqdm\n",
+    "\n",
+    "def extract_fault(file_name):\n",
+    "    fault_mapping = {\n",
+    "        '0Health': 'HEA', '1Chipped': 'CTF', '2Miss': 'MTF', \n",
+    "        '3Root': 'RCF', '4Surface': 'SWF', '5Ball': 'BWF', \n",
+    "        '6Combination': 'CWF', '7Inner': 'IRF', '8Outer': 'ORF'\n",
+    "    }\n",
+    "    for key, value in fault_mapping.items():\n",
+    "        if key in file_name:\n",
+    "            return value\n",
+    "    return None\n",
+    "\n",
+    "def make_csv_writer(csv_file):\n",
+    "    csv_writer = csv.writer(csv_file)\n",
+    "    csv_writer.writerow(['Channel1', 'Channel2', 'Channel3', 'Channel4', 'Channel5', 'Channel6', 'Channel7', 'Channel8', 'Fault'])\n",
+    "    return csv_writer\n",
+    "\n",
+    "def generate_csv(output_directory, root_path, speed, experiment, files):\n",
+    "    if not os.path.exists(output_directory):\n",
+    "        os.makedirs(output_directory)\n",
+    "    \n",
+    "    train_filename_suffix = f\"{speed}_{experiment}_train\" if experiment else f\"{speed}_train\"\n",
+    "    test_filename_suffix = f\"{speed}_{experiment}_test\" if experiment else f\"{speed}_test\"\n",
+    "    \n",
+    "    train_output_file_path = os.path.join(output_directory, f\"PGB_{train_filename_suffix}.csv\")\n",
+    "    test_output_file_path = os.path.join(output_directory, f\"PGB_{test_filename_suffix}.csv\")\n",
+    "    \n",
+    "    with open(train_output_file_path, 'w', newline='', encoding='utf-8') as train_csvfile, \\\n",
+    "        open(test_output_file_path, 'w', newline='', encoding='utf-8') as test_csvfile:\n",
+    "        train_csv_writer = make_csv_writer(train_csvfile)\n",
+    "        test_csv_writer = make_csv_writer(test_csvfile)\n",
+    "        \n",
+    "        for file in tqdm(files, desc=f\"Processing {speed} {experiment}\", unit=\"file\"):\n",
+    "            fault_type = extract_fault(file)\n",
+    "            # Only append 'speed' directory for non-variable speed cases\n",
+    "            if experiment:\n",
+    "                file_path = os.path.join(root_path, file)  # Already includes 'Variable_speed/Experiment#'\n",
+    "            else:\n",
+    "                file_path = os.path.join(root_path, file)  # 'root_path' already includes 'speed' directory\n",
+    "            \n",
+    "            data = pd.read_csv(file_path, sep='\\t', header=None, encoding='ISO-8859-1', skiprows=1, nrows=10000)\n",
+    "            train_samples, test_samples = data.iloc[:8000, :], data.iloc[8000:10000, :]\n",
+    "            \n",
+    "            for index, row in train_samples.iterrows():\n",
+    "                train_csv_writer.writerow(row[:8].tolist() + [fault_type])\n",
+    "            \n",
+    "            for index, row in test_samples.iterrows():\n",
+    "                test_csv_writer.writerow(row[:8].tolist() + [fault_type])\n",
+    "\n",
+    "def process_pgb_data(data_root_folder, output_directory):\n",
+    "    for root, dirs, files in os.walk(data_root_folder):\n",
+    "        parts = root.split(os.sep)\n",
+    "        if 'Variable_speed' in parts:\n",
+    "            speed = \"Variable_speed\"\n",
+    "            experiment_dir = parts[-1]  # Get the last part as the experiment name\n",
+    "            exp_files = [f for f in os.listdir(root) if f.endswith('.txt')]\n",
+    "            # Pass the 'root' directly without modifying it for variable speed\n",
+    "            generate_csv(output_directory, root, speed, experiment_dir, exp_files)\n",
+    "        elif 'PGB' in parts and files:\n",
+    "            speed = parts[-1]  # Last part of 'root' is the speed directory\n",
+    "            # For non-variable speed, pass the 'root' directly\n",
+    "            generate_csv(output_directory, root, speed, '', files)\n",
+    "\n",
+    "data_root_folder = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/PGB/PGB'\n",
+    "output_directory = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs'\n",
+    "process_pgb_data(data_root_folder, output_directory)\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Channel1</th>\n",
+       "      <th>Channel2</th>\n",
+       "      <th>Channel3</th>\n",
+       "      <th>Channel4</th>\n",
+       "      <th>Channel5</th>\n",
+       "      <th>Channel6</th>\n",
+       "      <th>Channel7</th>\n",
+       "      <th>Channel8</th>\n",
+       "      <th>Fault</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>-0.153570</td>\n",
+       "      <td>0.005227</td>\n",
+       "      <td>-0.017059</td>\n",
+       "      <td>-0.000571</td>\n",
+       "      <td>-0.007633</td>\n",
+       "      <td>-0.009820</td>\n",
+       "      <td>0.003384</td>\n",
+       "      <td>-0.001909</td>\n",
+       "      <td>MTF</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>-0.164452</td>\n",
+       "      <td>-0.004816</td>\n",
+       "      <td>0.026236</td>\n",
+       "      <td>0.000107</td>\n",
+       "      <td>0.022082</td>\n",
+       "      <td>-0.017362</td>\n",
+       "      <td>-0.005224</td>\n",
+       "      <td>-0.004719</td>\n",
+       "      <td>MTF</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>-0.157295</td>\n",
+       "      <td>-0.002015</td>\n",
+       "      <td>-0.006962</td>\n",
+       "      <td>0.002519</td>\n",
+       "      <td>0.030006</td>\n",
+       "      <td>-0.002317</td>\n",
+       "      <td>0.023944</td>\n",
+       "      <td>0.046288</td>\n",
+       "      <td>MTF</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>-0.139383</td>\n",
+       "      <td>-0.006511</td>\n",
+       "      <td>-0.009232</td>\n",
+       "      <td>0.016114</td>\n",
+       "      <td>0.016241</td>\n",
+       "      <td>0.019965</td>\n",
+       "      <td>-0.012102</td>\n",
+       "      <td>0.003017</td>\n",
+       "      <td>MTF</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>-0.148171</td>\n",
+       "      <td>0.000378</td>\n",
+       "      <td>0.017881</td>\n",
+       "      <td>-0.009464</td>\n",
+       "      <td>0.008769</td>\n",
+       "      <td>0.012790</td>\n",
+       "      <td>-0.015618</td>\n",
+       "      <td>-0.079339</td>\n",
+       "      <td>MTF</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Channel1  Channel2  Channel3  Channel4  Channel5  Channel6  Channel7  \\\n",
+       "0 -0.153570  0.005227 -0.017059 -0.000571 -0.007633 -0.009820  0.003384   \n",
+       "1 -0.164452 -0.004816  0.026236  0.000107  0.022082 -0.017362 -0.005224   \n",
+       "2 -0.157295 -0.002015 -0.006962  0.002519  0.030006 -0.002317  0.023944   \n",
+       "3 -0.139383 -0.006511 -0.009232  0.016114  0.016241  0.019965 -0.012102   \n",
+       "4 -0.148171  0.000378  0.017881 -0.009464  0.008769  0.012790 -0.015618   \n",
+       "\n",
+       "   Channel8 Fault  \n",
+       "0 -0.001909   MTF  \n",
+       "1 -0.004719   MTF  \n",
+       "2  0.046288   MTF  \n",
+       "3  0.003017   MTF  \n",
+       "4 -0.079339   MTF  "
+      ]
+     },
+     "execution_count": 3,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df = pd.read_csv(\"/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs/PGB_30_3.csv\", nrows = 100)\n",
+    "df.head(5)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Deleted empty file: /home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs/PGB_Variable_speed_Variable_speed_train.csv\n",
+      "Deleted empty file: /home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs/PGB_Variable_speed_Variable_speed_test.csv\n",
+      "                                File Name  Number of Samples  BWF  CTF  CWF  HEA  IRF  MTF  ORF  RCF  SWF\n",
+      "                        PGB_20_0_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      "                       PGB_20_0_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "                        PGB_30_0_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      "                       PGB_30_0_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "                        PGB_30_1_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      "                       PGB_30_1_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "                        PGB_30_2_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      "                       PGB_30_2_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "                        PGB_30_3_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      "                       PGB_30_3_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "                        PGB_30_4_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      "                       PGB_30_4_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "                        PGB_30_5_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      "                       PGB_30_5_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "                        PGB_40_0_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      "                       PGB_40_0_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "                        PGB_50_0_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      "                       PGB_50_0_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      " PGB_Variable_speed_Experiment10_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      "PGB_Variable_speed_Experiment10_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "  PGB_Variable_speed_Experiment1_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      " PGB_Variable_speed_Experiment1_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "  PGB_Variable_speed_Experiment2_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      " PGB_Variable_speed_Experiment2_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "  PGB_Variable_speed_Experiment3_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      " PGB_Variable_speed_Experiment3_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "  PGB_Variable_speed_Experiment4_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      " PGB_Variable_speed_Experiment4_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "  PGB_Variable_speed_Experiment5_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      " PGB_Variable_speed_Experiment5_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "  PGB_Variable_speed_Experiment6_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      " PGB_Variable_speed_Experiment6_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "  PGB_Variable_speed_Experiment7_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      " PGB_Variable_speed_Experiment7_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "  PGB_Variable_speed_Experiment8_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      " PGB_Variable_speed_Experiment8_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n",
+      "  PGB_Variable_speed_Experiment9_test.csv              18000 2000 2000 2000 2000 2000 2000 2000 2000 2000\n",
+      " PGB_Variable_speed_Experiment9_train.csv              72000 8000 8000 8000 8000 8000 8000 8000 8000 8000\n"
+     ]
+    }
+   ],
+   "source": [
+    "import os\n",
+    "import pandas as pd\n",
+    "from collections import Counter\n",
+    "\n",
+    "def overview_csv_files(directory):\n",
+    "    # List to gather data for each file\n",
+    "    data = []\n",
+    "\n",
+    "    # Collect all fault types to ensure consistent columns\n",
+    "    all_faults = set()\n",
+    "\n",
+    "    # Iterate over all files in the directory\n",
+    "    for file in os.listdir(directory):\n",
+    "        if file.endswith(\".csv\"):\n",
+    "            file_path = os.path.join(directory, file)\n",
+    "\n",
+    "            # Read the CSV file\n",
+    "            df = pd.read_csv(file_path)\n",
+    "            \n",
+    "            # Check if the CSV is empty (aside from the header)\n",
+    "            if df.shape[0] == 0:\n",
+    "                # Delete the empty CSV file\n",
+    "                os.remove(file_path)\n",
+    "                print(f\"Deleted empty file: {file_path}\")\n",
+    "                continue  # Skip further processing for this file\n",
+    "\n",
+    "            # Calculate the number of samples\n",
+    "            num_samples = len(df)\n",
+    "\n",
+    "            # Calculate the distribution of faults\n",
+    "            fault_distribution = Counter(df['Fault'])\n",
+    "            all_faults.update(fault_distribution.keys())\n",
+    "\n",
+    "            # Prepare data for the current file\n",
+    "            data.append({'File Name': file, 'Number of Samples': num_samples, **fault_distribution})\n",
+    "\n",
+    "    # Create an overview DataFrame\n",
+    "    overview_df = pd.DataFrame(data)\n",
+    "\n",
+    "    # Ensure all fault columns are present\n",
+    "    for fault in all_faults:\n",
+    "        if fault not in overview_df.columns:\n",
+    "            overview_df[fault] = 0\n",
+    "\n",
+    "    # Reorder columns to have 'File Name' and 'Number of Samples' first\n",
+    "    cols = ['File Name', 'Number of Samples'] + sorted(all_faults)\n",
+    "    overview_df = overview_df[cols]\n",
+    "\n",
+    "    # Convert counts to integers\n",
+    "    overview_df.fillna(0, inplace=True)\n",
+    "    overview_df.loc[:, 'Number of Samples':] = overview_df.loc[:, 'Number of Samples':].astype(int)\n",
+    "    # Sort the DataFrame alphabetically by the 'File Name' column\n",
+    "    overview_df = overview_df.sort_values(by='File Name')\n",
+    "\n",
+    "    # Display the overview DataFrame\n",
+    "    print(overview_df.to_string(index=False))\n",
+    "\n",
+    "\n",
+    "# Example usage\n",
+    "directory = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs'\n",
+    "overview_csv_files(directory)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.preprocessing import StandardScaler\n",
+    "import pandas as pd\n",
+    "import os\n",
+    "import joblib  # For saving the scaler model\n",
+    "\n",
+    "def load_and_scale_data(csv_path, scaler=None, save_scaler_path=None):\n",
+    "    \"\"\"\n",
+    "    Loads data from a CSV file, scales the features (excluding the 'Fault' column), \n",
+    "    and returns the scaled DataFrame. Optionally saves the scaler model.\n",
+    "    \"\"\"\n",
+    "    # Load the data\n",
+    "    data = pd.read_csv(csv_path)\n",
+    "    \n",
+    "    # Separate features and target\n",
+    "    features = data.columns[:-1]  # Assuming the last column is the target\n",
+    "    X = data[features]\n",
+    "    y = data['Fault']\n",
+    "\n",
+    "    # Apply scaling\n",
+    "    if scaler is None:\n",
+    "        scaler = StandardScaler()\n",
+    "        X_scaled = scaler.fit_transform(X)\n",
+    "        if save_scaler_path:\n",
+    "            joblib.dump(scaler, save_scaler_path)\n",
+    "    else:\n",
+    "        X_scaled = scaler.transform(X)\n",
+    "    \n",
+    "    # Combine scaled features with target\n",
+    "    scaled_df = pd.DataFrame(X_scaled, columns=features)\n",
+    "    scaled_df['Fault'] = y\n",
+    "    \n",
+    "    return scaled_df\n",
+    "\n",
+    "# Define your dataset directory\n",
+    "dataset_dir = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs'\n",
+    "\n",
+    "# Iterate over your dataset files\n",
+    "for root, dirs, files in os.walk(dataset_dir):\n",
+    "    for file in sorted(files):\n",
+    "        if 'train' in file:\n",
+    "            # Handle training data\n",
+    "            csv_path = os.path.join(root, file)\n",
+    "            scaler_path = os.path.join(root, 'scaler_' + file.replace('.csv', '.joblib'))\n",
+    "            scaled_train_df = load_and_scale_data(csv_path, save_scaler_path=scaler_path)\n",
+    "            # Optionally, save the scaled training data\n",
+    "            scaled_train_df.to_csv(csv_path.replace('.csv', '_scaled.csv'), index=False)\n",
+    "        elif 'test' in file:\n",
+    "            # Handle testing data\n",
+    "            csv_path = os.path.join(root, file)\n",
+    "            # Load the corresponding scaler model for this speed group\n",
+    "            scaler_path = os.path.join(root, 'scaler_' + file.replace('_test.csv', '_train.joblib'))\n",
+    "            scaler = joblib.load(scaler_path) if os.path.exists(scaler_path) else None\n",
+    "            scaled_test_df = load_and_scale_data(csv_path, scaler=scaler)\n",
+    "            # Optionally, save the scaled testing data\n",
+    "            scaled_test_df.to_csv(csv_path.replace('.csv', '_scaled.csv'), index=False)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Processing: PGB_Variable_speed_Experiment5\n",
+      "Epoch 1/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m12s\u001b[0m 4ms/step - accuracy: 0.7718 - loss: 0.7223 - val_accuracy: 0.7153 - val_loss: 1.0793\n",
+      "Epoch 2/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9658 - loss: 0.1167 - val_accuracy: 0.8093 - val_loss: 0.6984\n",
+      "Epoch 3/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9808 - loss: 0.0631 - val_accuracy: 0.8211 - val_loss: 0.6621\n",
+      "Epoch 4/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9856 - loss: 0.0460 - val_accuracy: 0.8345 - val_loss: 0.6598\n",
+      "Epoch 5/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9876 - loss: 0.0380 - val_accuracy: 0.8328 - val_loss: 0.6827\n",
+      "Epoch 6/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9887 - loss: 0.0337 - val_accuracy: 0.8302 - val_loss: 0.7234\n",
+      "Epoch 7/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9895 - loss: 0.0311 - val_accuracy: 0.8362 - val_loss: 0.7034\n",
+      "Processing: PGB_Variable_speed_Experiment4\n",
+      "Epoch 1/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m12s\u001b[0m 4ms/step - accuracy: 0.7531 - loss: 0.7616 - val_accuracy: 0.7348 - val_loss: 0.7667\n",
+      "Epoch 2/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9330 - loss: 0.1784 - val_accuracy: 0.7478 - val_loss: 0.7325\n",
+      "Epoch 3/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9390 - loss: 0.1600 - val_accuracy: 0.7369 - val_loss: 0.7430\n",
+      "Epoch 4/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9442 - loss: 0.1446 - val_accuracy: 0.7371 - val_loss: 0.7898\n",
+      "Epoch 5/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m10s\u001b[0m 4ms/step - accuracy: 0.9463 - loss: 0.1379 - val_accuracy: 0.7508 - val_loss: 0.7353\n",
+      "Processing: PGB_30_4\n",
+      "Epoch 1/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m11s\u001b[0m 4ms/step - accuracy: 0.3505 - loss: 1.6077 - val_accuracy: 0.5310 - val_loss: 1.0811\n",
+      "Epoch 2/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.5991 - loss: 0.8975 - val_accuracy: 0.5418 - val_loss: 1.1411\n",
+      "Epoch 3/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m8s\u001b[0m 4ms/step - accuracy: 0.6106 - loss: 0.8601 - val_accuracy: 0.5309 - val_loss: 1.2250\n",
+      "Epoch 4/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m8s\u001b[0m 4ms/step - accuracy: 0.6160 - loss: 0.8419 - val_accuracy: 0.5091 - val_loss: 1.3696\n",
+      "Processing: PGB_Variable_speed_Experiment6\n",
+      "Epoch 1/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m11s\u001b[0m 4ms/step - accuracy: 0.7285 - loss: 0.7506 - val_accuracy: 0.8095 - val_loss: 0.6682\n",
+      "Epoch 2/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9703 - loss: 0.0974 - val_accuracy: 0.8684 - val_loss: 0.5442\n",
+      "Epoch 3/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m8s\u001b[0m 4ms/step - accuracy: 0.9844 - loss: 0.0467 - val_accuracy: 0.8755 - val_loss: 0.5215\n",
+      "Epoch 4/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m8s\u001b[0m 4ms/step - accuracy: 0.9842 - loss: 0.0414 - val_accuracy: 0.8824 - val_loss: 0.5043\n",
+      "Epoch 5/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m8s\u001b[0m 4ms/step - accuracy: 0.9858 - loss: 0.0390 - val_accuracy: 0.8902 - val_loss: 0.4842\n",
+      "Epoch 6/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m8s\u001b[0m 4ms/step - accuracy: 0.9866 - loss: 0.0372 - val_accuracy: 0.8982 - val_loss: 0.4672\n",
+      "Epoch 7/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m8s\u001b[0m 4ms/step - accuracy: 0.9854 - loss: 0.0372 - val_accuracy: 0.8937 - val_loss: 0.4922\n",
+      "Epoch 8/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m8s\u001b[0m 4ms/step - accuracy: 0.9857 - loss: 0.0360 - val_accuracy: 0.8960 - val_loss: 0.4834\n",
+      "Epoch 9/50\n",
+      "\u001b[1m2250/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 4ms/step - accuracy: 0.9870 - loss: 0.0339 - val_accuracy: 0.8985 - val_loss: 0.5099\n",
+      "Processing: PGB_Variable_speed_Experiment7\n",
+      "Epoch 1/50\n",
+      "\u001b[1m1857/2250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m━━━━\u001b[0m \u001b[1m1s\u001b[0m 3ms/step - accuracy: 0.6329 - loss: 1.0183"
+     ]
+    },
+    {
+     "ename": "KeyboardInterrupt",
+     "evalue": "",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mKeyboardInterrupt\u001b[0m                         Traceback (most recent call last)",
+      "Cell \u001b[0;32mIn[21], line 73\u001b[0m\n\u001b[1;32m     70\u001b[0m early_stopping \u001b[38;5;241m=\u001b[39m EarlyStopping(monitor\u001b[38;5;241m=\u001b[39m\u001b[38;5;124m'\u001b[39m\u001b[38;5;124mval_loss\u001b[39m\u001b[38;5;124m'\u001b[39m, patience\u001b[38;5;241m=\u001b[39m\u001b[38;5;241m3\u001b[39m, restore_best_weights\u001b[38;5;241m=\u001b[39m\u001b[38;5;28;01mTrue\u001b[39;00m)\n\u001b[1;32m     72\u001b[0m \u001b[38;5;66;03m# Train the model\u001b[39;00m\n\u001b[0;32m---> 73\u001b[0m \u001b[43mmodel\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mfit\u001b[49m\u001b[43m(\u001b[49m\u001b[43mX_train\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43my_train\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mvalidation_data\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43m(\u001b[49m\u001b[43mX_test\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43my_test\u001b[49m\u001b[43m)\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mepochs\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[38;5;241;43m50\u001b[39;49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mbatch_size\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[38;5;241;43m32\u001b[39;49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mcallbacks\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43m[\u001b[49m\u001b[43mearly_stopping\u001b[49m\u001b[43m]\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mverbose\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[38;5;241;43m1\u001b[39;49m\u001b[43m)\u001b[49m\n\u001b[1;32m     75\u001b[0m \u001b[38;5;66;03m# Here, you might want to save the model and any evaluation metrics you care about\u001b[39;00m\n\u001b[1;32m     76\u001b[0m \u001b[38;5;66;03m# model.save(f'model_{base_name}.h5')\u001b[39;00m\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/keras/src/utils/traceback_utils.py:118\u001b[0m, in \u001b[0;36mfilter_traceback.<locals>.error_handler\u001b[0;34m(*args, **kwargs)\u001b[0m\n\u001b[1;32m    116\u001b[0m filtered_tb \u001b[38;5;241m=\u001b[39m \u001b[38;5;28;01mNone\u001b[39;00m\n\u001b[1;32m    117\u001b[0m \u001b[38;5;28;01mtry\u001b[39;00m:\n\u001b[0;32m--> 118\u001b[0m     \u001b[38;5;28;01mreturn\u001b[39;00m \u001b[43mfn\u001b[49m\u001b[43m(\u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43margs\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43mkwargs\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    119\u001b[0m \u001b[38;5;28;01mexcept\u001b[39;00m \u001b[38;5;167;01mException\u001b[39;00m \u001b[38;5;28;01mas\u001b[39;00m e:\n\u001b[1;32m    120\u001b[0m     filtered_tb \u001b[38;5;241m=\u001b[39m _process_traceback_frames(e\u001b[38;5;241m.\u001b[39m__traceback__)\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/keras/src/backend/tensorflow/trainer.py:323\u001b[0m, in \u001b[0;36mTensorFlowTrainer.fit\u001b[0;34m(self, x, y, batch_size, epochs, verbose, callbacks, validation_split, validation_data, shuffle, class_weight, sample_weight, initial_epoch, steps_per_epoch, validation_steps, validation_batch_size, validation_freq)\u001b[0m\n\u001b[1;32m    321\u001b[0m \u001b[38;5;28;01mfor\u001b[39;00m step, iterator \u001b[38;5;129;01min\u001b[39;00m epoch_iterator\u001b[38;5;241m.\u001b[39menumerate_epoch():\n\u001b[1;32m    322\u001b[0m     callbacks\u001b[38;5;241m.\u001b[39mon_train_batch_begin(step)\n\u001b[0;32m--> 323\u001b[0m     logs \u001b[38;5;241m=\u001b[39m \u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mtrain_function\u001b[49m\u001b[43m(\u001b[49m\u001b[43miterator\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    324\u001b[0m     callbacks\u001b[38;5;241m.\u001b[39mon_train_batch_end(\n\u001b[1;32m    325\u001b[0m         step, \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_pythonify_logs(logs)\n\u001b[1;32m    326\u001b[0m     )\n\u001b[1;32m    327\u001b[0m     \u001b[38;5;28;01mif\u001b[39;00m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39mstop_training:\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/util/traceback_utils.py:150\u001b[0m, in \u001b[0;36mfilter_traceback.<locals>.error_handler\u001b[0;34m(*args, **kwargs)\u001b[0m\n\u001b[1;32m    148\u001b[0m filtered_tb \u001b[38;5;241m=\u001b[39m \u001b[38;5;28;01mNone\u001b[39;00m\n\u001b[1;32m    149\u001b[0m \u001b[38;5;28;01mtry\u001b[39;00m:\n\u001b[0;32m--> 150\u001b[0m   \u001b[38;5;28;01mreturn\u001b[39;00m \u001b[43mfn\u001b[49m\u001b[43m(\u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43margs\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43mkwargs\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    151\u001b[0m \u001b[38;5;28;01mexcept\u001b[39;00m \u001b[38;5;167;01mException\u001b[39;00m \u001b[38;5;28;01mas\u001b[39;00m e:\n\u001b[1;32m    152\u001b[0m   filtered_tb \u001b[38;5;241m=\u001b[39m _process_traceback_frames(e\u001b[38;5;241m.\u001b[39m__traceback__)\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/polymorphic_function.py:833\u001b[0m, in \u001b[0;36mFunction.__call__\u001b[0;34m(self, *args, **kwds)\u001b[0m\n\u001b[1;32m    830\u001b[0m compiler \u001b[38;5;241m=\u001b[39m \u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mxla\u001b[39m\u001b[38;5;124m\"\u001b[39m \u001b[38;5;28;01mif\u001b[39;00m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_jit_compile \u001b[38;5;28;01melse\u001b[39;00m \u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mnonXla\u001b[39m\u001b[38;5;124m\"\u001b[39m\n\u001b[1;32m    832\u001b[0m \u001b[38;5;28;01mwith\u001b[39;00m OptionalXlaContext(\u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_jit_compile):\n\u001b[0;32m--> 833\u001b[0m   result \u001b[38;5;241m=\u001b[39m \u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43m_call\u001b[49m\u001b[43m(\u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43margs\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43mkwds\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    835\u001b[0m new_tracing_count \u001b[38;5;241m=\u001b[39m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39mexperimental_get_tracing_count()\n\u001b[1;32m    836\u001b[0m without_tracing \u001b[38;5;241m=\u001b[39m (tracing_count \u001b[38;5;241m==\u001b[39m new_tracing_count)\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/polymorphic_function.py:878\u001b[0m, in \u001b[0;36mFunction._call\u001b[0;34m(self, *args, **kwds)\u001b[0m\n\u001b[1;32m    875\u001b[0m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_lock\u001b[38;5;241m.\u001b[39mrelease()\n\u001b[1;32m    876\u001b[0m \u001b[38;5;66;03m# In this case we have not created variables on the first call. So we can\u001b[39;00m\n\u001b[1;32m    877\u001b[0m \u001b[38;5;66;03m# run the first trace but we should fail if variables are created.\u001b[39;00m\n\u001b[0;32m--> 878\u001b[0m results \u001b[38;5;241m=\u001b[39m \u001b[43mtracing_compilation\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mcall_function\u001b[49m\u001b[43m(\u001b[49m\n\u001b[1;32m    879\u001b[0m \u001b[43m    \u001b[49m\u001b[43margs\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mkwds\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43m_variable_creation_config\u001b[49m\n\u001b[1;32m    880\u001b[0m \u001b[43m\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    881\u001b[0m \u001b[38;5;28;01mif\u001b[39;00m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_created_variables:\n\u001b[1;32m    882\u001b[0m   \u001b[38;5;28;01mraise\u001b[39;00m \u001b[38;5;167;01mValueError\u001b[39;00m(\u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mCreating variables on a non-first call to a function\u001b[39m\u001b[38;5;124m\"\u001b[39m\n\u001b[1;32m    883\u001b[0m                    \u001b[38;5;124m\"\u001b[39m\u001b[38;5;124m decorated with tf.function.\u001b[39m\u001b[38;5;124m\"\u001b[39m)\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/tracing_compilation.py:139\u001b[0m, in \u001b[0;36mcall_function\u001b[0;34m(args, kwargs, tracing_options)\u001b[0m\n\u001b[1;32m    137\u001b[0m bound_args \u001b[38;5;241m=\u001b[39m function\u001b[38;5;241m.\u001b[39mfunction_type\u001b[38;5;241m.\u001b[39mbind(\u001b[38;5;241m*\u001b[39margs, \u001b[38;5;241m*\u001b[39m\u001b[38;5;241m*\u001b[39mkwargs)\n\u001b[1;32m    138\u001b[0m flat_inputs \u001b[38;5;241m=\u001b[39m function\u001b[38;5;241m.\u001b[39mfunction_type\u001b[38;5;241m.\u001b[39munpack_inputs(bound_args)\n\u001b[0;32m--> 139\u001b[0m \u001b[38;5;28;01mreturn\u001b[39;00m \u001b[43mfunction\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43m_call_flat\u001b[49m\u001b[43m(\u001b[49m\u001b[43m  \u001b[49m\u001b[38;5;66;43;03m# pylint: disable=protected-access\u001b[39;49;00m\n\u001b[1;32m    140\u001b[0m \u001b[43m    \u001b[49m\u001b[43mflat_inputs\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mcaptured_inputs\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mfunction\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mcaptured_inputs\u001b[49m\n\u001b[1;32m    141\u001b[0m \u001b[43m\u001b[49m\u001b[43m)\u001b[49m\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/concrete_function.py:1322\u001b[0m, in \u001b[0;36mConcreteFunction._call_flat\u001b[0;34m(self, tensor_inputs, captured_inputs)\u001b[0m\n\u001b[1;32m   1318\u001b[0m possible_gradient_type \u001b[38;5;241m=\u001b[39m gradients_util\u001b[38;5;241m.\u001b[39mPossibleTapeGradientTypes(args)\n\u001b[1;32m   1319\u001b[0m \u001b[38;5;28;01mif\u001b[39;00m (possible_gradient_type \u001b[38;5;241m==\u001b[39m gradients_util\u001b[38;5;241m.\u001b[39mPOSSIBLE_GRADIENT_TYPES_NONE\n\u001b[1;32m   1320\u001b[0m     \u001b[38;5;129;01mand\u001b[39;00m executing_eagerly):\n\u001b[1;32m   1321\u001b[0m   \u001b[38;5;66;03m# No tape is watching; skip to running the function.\u001b[39;00m\n\u001b[0;32m-> 1322\u001b[0m   \u001b[38;5;28;01mreturn\u001b[39;00m \u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43m_inference_function\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mcall_preflattened\u001b[49m\u001b[43m(\u001b[49m\u001b[43margs\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m   1323\u001b[0m forward_backward \u001b[38;5;241m=\u001b[39m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_select_forward_and_backward_functions(\n\u001b[1;32m   1324\u001b[0m     args,\n\u001b[1;32m   1325\u001b[0m     possible_gradient_type,\n\u001b[1;32m   1326\u001b[0m     executing_eagerly)\n\u001b[1;32m   1327\u001b[0m forward_function, args_with_tangents \u001b[38;5;241m=\u001b[39m forward_backward\u001b[38;5;241m.\u001b[39mforward()\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/atomic_function.py:216\u001b[0m, in \u001b[0;36mAtomicFunction.call_preflattened\u001b[0;34m(self, args)\u001b[0m\n\u001b[1;32m    214\u001b[0m \u001b[38;5;28;01mdef\u001b[39;00m \u001b[38;5;21mcall_preflattened\u001b[39m(\u001b[38;5;28mself\u001b[39m, args: Sequence[core\u001b[38;5;241m.\u001b[39mTensor]) \u001b[38;5;241m-\u001b[39m\u001b[38;5;241m>\u001b[39m Any:\n\u001b[1;32m    215\u001b[0m \u001b[38;5;250m  \u001b[39m\u001b[38;5;124;03m\"\"\"Calls with flattened tensor inputs and returns the structured output.\"\"\"\u001b[39;00m\n\u001b[0;32m--> 216\u001b[0m   flat_outputs \u001b[38;5;241m=\u001b[39m \u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mcall_flat\u001b[49m\u001b[43m(\u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43margs\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    217\u001b[0m   \u001b[38;5;28;01mreturn\u001b[39;00m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39mfunction_type\u001b[38;5;241m.\u001b[39mpack_output(flat_outputs)\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/atomic_function.py:251\u001b[0m, in \u001b[0;36mAtomicFunction.call_flat\u001b[0;34m(self, *args)\u001b[0m\n\u001b[1;32m    249\u001b[0m \u001b[38;5;28;01mwith\u001b[39;00m record\u001b[38;5;241m.\u001b[39mstop_recording():\n\u001b[1;32m    250\u001b[0m   \u001b[38;5;28;01mif\u001b[39;00m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_bound_context\u001b[38;5;241m.\u001b[39mexecuting_eagerly():\n\u001b[0;32m--> 251\u001b[0m     outputs \u001b[38;5;241m=\u001b[39m \u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43m_bound_context\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mcall_function\u001b[49m\u001b[43m(\u001b[49m\n\u001b[1;32m    252\u001b[0m \u001b[43m        \u001b[49m\u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mname\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m    253\u001b[0m \u001b[43m        \u001b[49m\u001b[38;5;28;43mlist\u001b[39;49m\u001b[43m(\u001b[49m\u001b[43margs\u001b[49m\u001b[43m)\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m    254\u001b[0m \u001b[43m        \u001b[49m\u001b[38;5;28;43mlen\u001b[39;49m\u001b[43m(\u001b[49m\u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mfunction_type\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mflat_outputs\u001b[49m\u001b[43m)\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m    255\u001b[0m \u001b[43m    \u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    256\u001b[0m   \u001b[38;5;28;01melse\u001b[39;00m:\n\u001b[1;32m    257\u001b[0m     outputs \u001b[38;5;241m=\u001b[39m make_call_op_in_graph(\n\u001b[1;32m    258\u001b[0m         \u001b[38;5;28mself\u001b[39m,\n\u001b[1;32m    259\u001b[0m         \u001b[38;5;28mlist\u001b[39m(args),\n\u001b[1;32m    260\u001b[0m         \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_bound_context\u001b[38;5;241m.\u001b[39mfunction_call_options\u001b[38;5;241m.\u001b[39mas_attrs(),\n\u001b[1;32m    261\u001b[0m     )\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/context.py:1500\u001b[0m, in \u001b[0;36mContext.call_function\u001b[0;34m(self, name, tensor_inputs, num_outputs)\u001b[0m\n\u001b[1;32m   1498\u001b[0m cancellation_context \u001b[38;5;241m=\u001b[39m cancellation\u001b[38;5;241m.\u001b[39mcontext()\n\u001b[1;32m   1499\u001b[0m \u001b[38;5;28;01mif\u001b[39;00m cancellation_context \u001b[38;5;129;01mis\u001b[39;00m \u001b[38;5;28;01mNone\u001b[39;00m:\n\u001b[0;32m-> 1500\u001b[0m   outputs \u001b[38;5;241m=\u001b[39m \u001b[43mexecute\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mexecute\u001b[49m\u001b[43m(\u001b[49m\n\u001b[1;32m   1501\u001b[0m \u001b[43m      \u001b[49m\u001b[43mname\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mdecode\u001b[49m\u001b[43m(\u001b[49m\u001b[38;5;124;43m\"\u001b[39;49m\u001b[38;5;124;43mutf-8\u001b[39;49m\u001b[38;5;124;43m\"\u001b[39;49m\u001b[43m)\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1502\u001b[0m \u001b[43m      \u001b[49m\u001b[43mnum_outputs\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mnum_outputs\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1503\u001b[0m \u001b[43m      \u001b[49m\u001b[43minputs\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mtensor_inputs\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1504\u001b[0m \u001b[43m      \u001b[49m\u001b[43mattrs\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mattrs\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1505\u001b[0m \u001b[43m      \u001b[49m\u001b[43mctx\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[38;5;28;43mself\u001b[39;49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1506\u001b[0m \u001b[43m  \u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m   1507\u001b[0m \u001b[38;5;28;01melse\u001b[39;00m:\n\u001b[1;32m   1508\u001b[0m   outputs \u001b[38;5;241m=\u001b[39m execute\u001b[38;5;241m.\u001b[39mexecute_with_cancellation(\n\u001b[1;32m   1509\u001b[0m       name\u001b[38;5;241m.\u001b[39mdecode(\u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mutf-8\u001b[39m\u001b[38;5;124m\"\u001b[39m),\n\u001b[1;32m   1510\u001b[0m       num_outputs\u001b[38;5;241m=\u001b[39mnum_outputs,\n\u001b[0;32m   (...)\u001b[0m\n\u001b[1;32m   1514\u001b[0m       cancellation_manager\u001b[38;5;241m=\u001b[39mcancellation_context,\n\u001b[1;32m   1515\u001b[0m   )\n",
+      "File \u001b[0;32m~/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/execute.py:53\u001b[0m, in \u001b[0;36mquick_execute\u001b[0;34m(op_name, num_outputs, inputs, attrs, ctx, name)\u001b[0m\n\u001b[1;32m     51\u001b[0m \u001b[38;5;28;01mtry\u001b[39;00m:\n\u001b[1;32m     52\u001b[0m   ctx\u001b[38;5;241m.\u001b[39mensure_initialized()\n\u001b[0;32m---> 53\u001b[0m   tensors \u001b[38;5;241m=\u001b[39m \u001b[43mpywrap_tfe\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mTFE_Py_Execute\u001b[49m\u001b[43m(\u001b[49m\u001b[43mctx\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43m_handle\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mdevice_name\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mop_name\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m     54\u001b[0m \u001b[43m                                      \u001b[49m\u001b[43minputs\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mattrs\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mnum_outputs\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m     55\u001b[0m \u001b[38;5;28;01mexcept\u001b[39;00m core\u001b[38;5;241m.\u001b[39m_NotOkStatusException \u001b[38;5;28;01mas\u001b[39;00m e:\n\u001b[1;32m     56\u001b[0m   \u001b[38;5;28;01mif\u001b[39;00m name \u001b[38;5;129;01mis\u001b[39;00m \u001b[38;5;129;01mnot\u001b[39;00m \u001b[38;5;28;01mNone\u001b[39;00m:\n",
+      "\u001b[0;31mKeyboardInterrupt\u001b[0m: "
+     ]
+    }
+   ],
+   "source": [
+    "import os\n",
+    "import pandas as pd\n",
+    "from tensorflow.keras.models import Sequential\n",
+    "from tensorflow.keras.layers import LSTM, Dense\n",
+    "from tensorflow.keras.optimizers import Adam\n",
+    "from tensorflow.keras.callbacks import EarlyStopping\n",
+    "from sklearn.preprocessing import LabelEncoder\n",
+    "from tensorflow.keras.utils import to_categorical\n",
+    "import numpy as np\n",
+    "\n",
+    "# Directory containing your scaled CSV files\n",
+    "csv_directory = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs'\n",
+    "\n",
+    "def load_data(train_path, test_path):\n",
+    "    # Load datasets\n",
+    "    train_df = pd.read_csv(train_path)\n",
+    "    test_df = pd.read_csv(test_path)\n",
+    "\n",
+    "    # Split into features and labels\n",
+    "    X_train, y_train = train_df.iloc[:, :-1], train_df.iloc[:, -1]\n",
+    "    X_test, y_test = test_df.iloc[:, :-1], test_df.iloc[:, -1]\n",
+    "\n",
+    "    # Encode labels\n",
+    "    encoder = LabelEncoder()\n",
+    "    y_train_encoded = encoder.fit_transform(y_train)\n",
+    "    y_test_encoded = encoder.transform(y_test)\n",
+    "\n",
+    "    y_train_onehot = to_categorical(y_train_encoded)\n",
+    "    y_test_onehot = to_categorical(y_test_encoded)\n",
+    "\n",
+    "    # Reshape for LSTM [samples, timesteps, features]\n",
+    "    X_train = X_train.values.reshape((X_train.shape[0], 1, X_train.shape[1]))\n",
+    "    X_test = X_test.values.reshape((X_test.shape[0], 1, X_test.shape[1]))\n",
+    "\n",
+    "    return X_train, y_train_onehot, X_test, y_test_onehot\n",
+    "\n",
+    "from tensorflow.keras.layers import Input\n",
+    "\n",
+    "def create_model(input_shape, num_classes):\n",
+    "    model = Sequential()\n",
+    "    model.add(Input(shape=input_shape))  # Define the input shape explicitly with an Input layer\n",
+    "    model.add(LSTM(50, return_sequences=True))\n",
+    "    model.add(LSTM(50))\n",
+    "    model.add(Dense(num_classes, activation='softmax'))\n",
+    "\n",
+    "    model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])\n",
+    "    return model\n",
+    "\n",
+    "\n",
+    "    model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])\n",
+    "    return model\n",
+    "\n",
+    "# Iterate through the directory to find matching scaled train and test pairs\n",
+    "for file in os.listdir(csv_directory):\n",
+    "    if file.endswith(\"_train_scaled.csv\"):\n",
+    "        base_name = file.replace(\"_train_scaled.csv\", \"\")\n",
+    "        test_file = base_name + \"_test_scaled.csv\"\n",
+    "\n",
+    "        if test_file in os.listdir(csv_directory):\n",
+    "            train_path = os.path.join(csv_directory, file)\n",
+    "            test_path = os.path.join(csv_directory, test_file)\n",
+    "\n",
+    "            print(f\"Processing: {base_name}\")\n",
+    "            X_train, y_train, X_test, y_test = load_data(train_path, test_path)\n",
+    "\n",
+    "            # Create model\n",
+    "            model = create_model(input_shape=(X_train.shape[1], X_train.shape[2]), num_classes=y_train.shape[1])\n",
+    "\n",
+    "            # Early stopping to avoid overfitting\n",
+    "            early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)\n",
+    "\n",
+    "            # Train the model\n",
+    "            model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=50, batch_size=32, callbacks=[early_stopping], verbose=1)\n",
+    "\n",
+    "            # Here, you might want to save the model and any evaluation metrics you care about\n",
+    "            # model.save(f'model_{base_name}.h5')\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "ltn",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.10.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
