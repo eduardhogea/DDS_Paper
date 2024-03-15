@@ -1,0 +1,274 @@
+2024-03-14 21:53:09.988424: I external/local_tsl/tsl/cuda/cudart_stub.cc:32] Could not find cuda drivers on your machine, GPU will not be used.
+2024-03-14 21:53:10.001797: I external/local_tsl/tsl/cuda/cudart_stub.cc:32] Could not find cuda drivers on your machine, GPU will not be used.
+2024-03-14 21:53:10.116590: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2024-03-14 21:53:15.536684: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+Processing: PGB_20_0
+/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/keras/src/layers/rnn/rnn.py:205: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+2024-03-14 21:53:29.041363: W external/local_tsl/tsl/framework/cpu_allocator_impl.cc:83] Allocation of 690949440 exceeds 10% of free system memory.
+Epoch 1/100
+352/352 - 385s - 1s/step - accuracy: 0.9332 - loss: 0.1838 - val_accuracy: 0.5509 - val_loss: 3.4459 - learning_rate: 0.0010
+Epoch 2/100
+352/352 - 379s - 1s/step - accuracy: 0.9916 - loss: 0.0279 - val_accuracy: 0.5258 - val_loss: 3.6890 - learning_rate: 0.0010
+Epoch 3/100
+352/352 - 395s - 1s/step - accuracy: 0.9955 - loss: 0.0150 - val_accuracy: 0.6032 - val_loss: 3.4978 - learning_rate: 0.0010
+Epoch 4/100
+352/352 - 381s - 1s/step - accuracy: 0.9993 - loss: 0.0024 - val_accuracy: 0.6022 - val_loss: 4.0481 - learning_rate: 0.0010
+Epoch 5/100
+352/352 - 375s - 1s/step - accuracy: 0.9989 - loss: 0.0036 - val_accuracy: 0.5531 - val_loss: 5.4969 - learning_rate: 0.0010
+Epoch 6/100
+352/352 - 385s - 1s/step - accuracy: 0.9990 - loss: 0.0035 - val_accuracy: 0.5291 - val_loss: 5.1461 - learning_rate: 0.0010
+Epoch 7/100
+352/352 - 379s - 1s/step - accuracy: 0.9997 - loss: 8.8091e-04 - val_accuracy: 0.5345 - val_loss: 5.3008 - learning_rate: 0.0010
+Epoch 8/100
+352/352 - 386s - 1s/step - accuracy: 0.9880 - loss: 0.0407 - val_accuracy: 0.4710 - val_loss: 5.5368 - learning_rate: 0.0010
+Epoch 9/100
+352/352 - 389s - 1s/step - accuracy: 0.9995 - loss: 0.0017 - val_accuracy: 0.4702 - val_loss: 5.5657 - learning_rate: 0.0010
+Epoch 10/100
+352/352 - 383s - 1s/step - accuracy: 0.9996 - loss: 0.0014 - val_accuracy: 0.4780 - val_loss: 5.8514 - learning_rate: 0.0010
+Epoch 11/100
+352/352 - 372s - 1s/step - accuracy: 0.9999 - loss: 3.3830e-04 - val_accuracy: 0.4786 - val_loss: 5.9466 - learning_rate: 1.0000e-04
+Epoch 12/100
+352/352 - 384s - 1s/step - accuracy: 1.0000 - loss: 2.0557e-04 - val_accuracy: 0.4766 - val_loss: 6.0827 - learning_rate: 1.0000e-04
+Epoch 13/100
+352/352 - 437s - 1s/step - accuracy: 1.0000 - loss: 1.6448e-04 - val_accuracy: 0.4751 - val_loss: 6.1707 - learning_rate: 1.0000e-04
+Epoch 14/100
+352/352 - 375s - 1s/step - accuracy: 1.0000 - loss: 1.4562e-04 - val_accuracy: 0.4784 - val_loss: 6.1613 - learning_rate: 1.0000e-04
+Epoch 15/100
+352/352 - 385s - 1s/step - accuracy: 1.0000 - loss: 1.3740e-04 - val_accuracy: 0.4786 - val_loss: 6.2063 - learning_rate: 1.0000e-04
+Epoch 16/100
+352/352 - 371s - 1s/step - accuracy: 1.0000 - loss: 1.1537e-04 - val_accuracy: 0.4774 - val_loss: 6.3248 - learning_rate: 1.0000e-04
+Epoch 17/100
+352/352 - 392s - 1s/step - accuracy: 1.0000 - loss: 1.0335e-04 - val_accuracy: 0.4774 - val_loss: 6.3285 - learning_rate: 1.0000e-04
+Epoch 18/100
+352/352 - 391s - 1s/step - accuracy: 1.0000 - loss: 1.0835e-04 - val_accuracy: 0.4787 - val_loss: 6.4245 - learning_rate: 1.0000e-04
+Epoch 19/100
+352/352 - 374s - 1s/step - accuracy: 1.0000 - loss: 1.0669e-04 - val_accuracy: 0.4780 - val_loss: 6.5262 - learning_rate: 1.0000e-04
+Epoch 20/100
+352/352 - 376s - 1s/step - accuracy: 1.0000 - loss: 1.7101e-04 - val_accuracy: 0.4768 - val_loss: 6.5595 - learning_rate: 1.0000e-04
+Epoch 21/100
+352/352 - 373s - 1s/step - accuracy: 1.0000 - loss: 5.2931e-05 - val_accuracy: 0.4761 - val_loss: 6.5589 - learning_rate: 1.0000e-05
+Epoch 22/100
+352/352 - 385s - 1s/step - accuracy: 1.0000 - loss: 5.3934e-05 - val_accuracy: 0.4764 - val_loss: 6.5695 - learning_rate: 1.0000e-05
+Epoch 23/100
+352/352 - 372s - 1s/step - accuracy: 1.0000 - loss: 5.0734e-05 - val_accuracy: 0.4761 - val_loss: 6.5921 - learning_rate: 1.0000e-05
+Epoch 24/100
+352/352 - 380s - 1s/step - accuracy: 1.0000 - loss: 4.9511e-05 - val_accuracy: 0.4765 - val_loss: 6.5950 - learning_rate: 1.0000e-05
+Epoch 25/100
+352/352 - 370s - 1s/step - accuracy: 1.0000 - loss: 4.3487e-05 - val_accuracy: 0.4764 - val_loss: 6.6108 - learning_rate: 1.0000e-05
+Epoch 26/100
+352/352 - 399s - 1s/step - accuracy: 1.0000 - loss: 5.0713e-05 - val_accuracy: 0.4759 - val_loss: 6.6388 - learning_rate: 1.0000e-05
+Epoch 27/100
+352/352 - 372s - 1s/step - accuracy: 1.0000 - loss: 4.4689e-05 - val_accuracy: 0.4742 - val_loss: 6.6981 - learning_rate: 1.0000e-05
+Epoch 28/100
+352/352 - 377s - 1s/step - accuracy: 1.0000 - loss: 4.9060e-05 - val_accuracy: 0.4734 - val_loss: 6.7120 - learning_rate: 1.0000e-05
+Epoch 29/100
+352/352 - 379s - 1s/step - accuracy: 1.0000 - loss: 4.2465e-05 - val_accuracy: 0.4763 - val_loss: 6.6820 - learning_rate: 1.0000e-05
+Epoch 30/100
+352/352 - 380s - 1s/step - accuracy: 1.0000 - loss: 4.3983e-05 - val_accuracy: 0.4743 - val_loss: 6.7869 - learning_rate: 1.0000e-05
+Epoch 31/100
+352/352 - 373s - 1s/step - accuracy: 1.0000 - loss: 3.7864e-05 - val_accuracy: 0.4744 - val_loss: 6.7661 - learning_rate: 1.0000e-06
+Epoch 32/100
+352/352 - 388s - 1s/step - accuracy: 1.0000 - loss: 3.3623e-05 - val_accuracy: 0.4744 - val_loss: 6.7719 - learning_rate: 1.0000e-06
+Epoch 33/100
+352/352 - 381s - 1s/step - accuracy: 1.0000 - loss: 3.4849e-05 - val_accuracy: 0.4748 - val_loss: 6.7636 - learning_rate: 1.0000e-06
+Epoch 34/100
+352/352 - 382s - 1s/step - accuracy: 1.0000 - loss: 3.9027e-05 - val_accuracy: 0.4747 - val_loss: 6.7705 - learning_rate: 1.0000e-06
+Epoch 35/100
+352/352 - 381s - 1s/step - accuracy: 1.0000 - loss: 3.2949e-05 - val_accuracy: 0.4748 - val_loss: 6.7710 - learning_rate: 1.0000e-06
+Epoch 36/100
+352/352 - 383s - 1s/step - accuracy: 1.0000 - loss: 3.1943e-05 - val_accuracy: 0.4746 - val_loss: 6.7814 - learning_rate: 1.0000e-06
+Epoch 37/100
+352/352 - 374s - 1s/step - accuracy: 1.0000 - loss: 2.8928e-05 - val_accuracy: 0.4745 - val_loss: 6.7822 - learning_rate: 1.0000e-06
+Epoch 38/100
+352/352 - 370s - 1s/step - accuracy: 1.0000 - loss: 3.4476e-05 - val_accuracy: 0.4746 - val_loss: 6.7862 - learning_rate: 1.0000e-06
+Epoch 39/100
+352/352 - 389s - 1s/step - accuracy: 1.0000 - loss: 3.1265e-05 - val_accuracy: 0.4748 - val_loss: 6.7866 - learning_rate: 1.0000e-06
+Epoch 40/100
+352/352 - 371s - 1s/step - accuracy: 1.0000 - loss: 3.2922e-05 - val_accuracy: 0.4749 - val_loss: 6.7999 - learning_rate: 1.0000e-06
+Epoch 41/100
+352/352 - 387s - 1s/step - accuracy: 1.0000 - loss: 2.7436e-05 - val_accuracy: 0.4749 - val_loss: 6.8001 - learning_rate: 1.0000e-07
+Epoch 42/100
+352/352 - 450s - 1s/step - accuracy: 1.0000 - loss: 2.8323e-05 - val_accuracy: 0.4749 - val_loss: 6.8013 - learning_rate: 1.0000e-07
+Epoch 43/100
+352/352 - 428s - 1s/step - accuracy: 1.0000 - loss: 3.2278e-05 - val_accuracy: 0.4749 - val_loss: 6.8009 - learning_rate: 1.0000e-07
+Epoch 44/100
+352/352 - 392s - 1s/step - accuracy: 1.0000 - loss: 2.7227e-05 - val_accuracy: 0.4749 - val_loss: 6.7999 - learning_rate: 1.0000e-07
+Epoch 45/100
+352/352 - 389s - 1s/step - accuracy: 1.0000 - loss: 3.3068e-05 - val_accuracy: 0.4748 - val_loss: 6.7986 - learning_rate: 1.0000e-07
+Epoch 46/100
+352/352 - 393s - 1s/step - accuracy: 1.0000 - loss: 3.1949e-05 - val_accuracy: 0.4747 - val_loss: 6.7997 - learning_rate: 1.0000e-07
+Epoch 47/100
+352/352 - 409s - 1s/step - accuracy: 1.0000 - loss: 2.8921e-05 - val_accuracy: 0.4747 - val_loss: 6.8009 - learning_rate: 1.0000e-07
+Epoch 48/100
+352/352 - 413s - 1s/step - accuracy: 1.0000 - loss: 2.9836e-05 - val_accuracy: 0.4748 - val_loss: 6.8012 - learning_rate: 1.0000e-07
+Epoch 49/100
+352/352 - 407s - 1s/step - accuracy: 1.0000 - loss: 3.0688e-05 - val_accuracy: 0.4748 - val_loss: 6.8004 - learning_rate: 1.0000e-07
+Epoch 50/100
+352/352 - 431s - 1s/step - accuracy: 1.0000 - loss: 2.9108e-05 - val_accuracy: 0.4748 - val_loss: 6.8017 - learning_rate: 1.0000e-07
+Epoch 51/100
+352/352 - 400s - 1s/step - accuracy: 1.0000 - loss: 2.8002e-05 - val_accuracy: 0.4749 - val_loss: 6.8017 - learning_rate: 1.0000e-08
+Processing: PGB_30_0
+/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/keras/src/layers/rnn/rnn.py:205: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+2024-03-15 03:23:29.918396: W external/local_tsl/tsl/framework/cpu_allocator_impl.cc:83] Allocation of 690949440 exceeds 10% of free system memory.
+Epoch 1/100
+352/352 - 398s - 1s/step - accuracy: 0.8961 - loss: 0.2697 - val_accuracy: 0.5732 - val_loss: 3.3369 - learning_rate: 0.0010
+Epoch 2/100
+352/352 - 381s - 1s/step - accuracy: 0.9969 - loss: 0.0099 - val_accuracy: 0.5777 - val_loss: 3.3561 - learning_rate: 0.0010
+Epoch 3/100
+352/352 - 389s - 1s/step - accuracy: 0.9979 - loss: 0.0067 - val_accuracy: 0.6000 - val_loss: 3.2718 - learning_rate: 0.0010
+Epoch 4/100
+352/352 - 389s - 1s/step - accuracy: 0.9989 - loss: 0.0033 - val_accuracy: 0.5600 - val_loss: 3.4671 - learning_rate: 0.0010
+Epoch 5/100
+352/352 - 386s - 1s/step - accuracy: 0.9991 - loss: 0.0028 - val_accuracy: 0.5853 - val_loss: 3.5548 - learning_rate: 0.0010
+Epoch 6/100
+352/352 - 408s - 1s/step - accuracy: 0.9926 - loss: 0.0258 - val_accuracy: 0.6489 - val_loss: 2.6712 - learning_rate: 0.0010
+Epoch 7/100
+352/352 - 441s - 1s/step - accuracy: 0.9994 - loss: 0.0019 - val_accuracy: 0.6298 - val_loss: 3.4904 - learning_rate: 0.0010
+Epoch 8/100
+352/352 - 420s - 1s/step - accuracy: 0.9972 - loss: 0.0099 - val_accuracy: 0.7113 - val_loss: 1.9250 - learning_rate: 0.0010
+Epoch 9/100
+352/352 - 371s - 1s/step - accuracy: 0.9992 - loss: 0.0028 - val_accuracy: 0.6675 - val_loss: 2.7869 - learning_rate: 0.0010
+Epoch 10/100
+352/352 - 376s - 1s/step - accuracy: 0.9996 - loss: 0.0013 - val_accuracy: 0.6581 - val_loss: 3.1702 - learning_rate: 0.0010
+Epoch 11/100
+352/352 - 382s - 1s/step - accuracy: 1.0000 - loss: 2.1467e-04 - val_accuracy: 0.6674 - val_loss: 3.1072 - learning_rate: 1.0000e-04
+Epoch 12/100
+352/352 - 387s - 1s/step - accuracy: 1.0000 - loss: 1.0290e-04 - val_accuracy: 0.6622 - val_loss: 3.1979 - learning_rate: 1.0000e-04
+Epoch 13/100
+352/352 - 383s - 1s/step - accuracy: 1.0000 - loss: 8.0373e-05 - val_accuracy: 0.6647 - val_loss: 3.1989 - learning_rate: 1.0000e-04
+Epoch 14/100
+352/352 - 393s - 1s/step - accuracy: 1.0000 - loss: 6.3808e-05 - val_accuracy: 0.6581 - val_loss: 3.3215 - learning_rate: 1.0000e-04
+Epoch 15/100
+352/352 - 386s - 1s/step - accuracy: 1.0000 - loss: 5.6780e-05 - val_accuracy: 0.6635 - val_loss: 3.2901 - learning_rate: 1.0000e-04
+Epoch 16/100
+352/352 - 443s - 1s/step - accuracy: 1.0000 - loss: 5.4722e-05 - val_accuracy: 0.6595 - val_loss: 3.3748 - learning_rate: 1.0000e-04
+Epoch 17/100
+352/352 - 374s - 1s/step - accuracy: 1.0000 - loss: 4.4524e-05 - val_accuracy: 0.6610 - val_loss: 3.3930 - learning_rate: 1.0000e-04
+Epoch 18/100
+352/352 - 386s - 1s/step - accuracy: 1.0000 - loss: 3.8456e-05 - val_accuracy: 0.6571 - val_loss: 3.5023 - learning_rate: 1.0000e-04
+Epoch 19/100
+352/352 - 374s - 1s/step - accuracy: 1.0000 - loss: 3.9501e-05 - val_accuracy: 0.6610 - val_loss: 3.4860 - learning_rate: 1.0000e-04
+Epoch 20/100
+352/352 - 395s - 1s/step - accuracy: 1.0000 - loss: 3.3715e-05 - val_accuracy: 0.6553 - val_loss: 3.5346 - learning_rate: 1.0000e-04
+Epoch 21/100
+352/352 - 380s - 1s/step - accuracy: 1.0000 - loss: 2.2392e-05 - val_accuracy: 0.6570 - val_loss: 3.5279 - learning_rate: 1.0000e-05
+Epoch 22/100
+352/352 - 408s - 1s/step - accuracy: 1.0000 - loss: 2.1045e-05 - val_accuracy: 0.6576 - val_loss: 3.5340 - learning_rate: 1.0000e-05
+Epoch 23/100
+352/352 - 435s - 1s/step - accuracy: 1.0000 - loss: 2.3220e-05 - val_accuracy: 0.6563 - val_loss: 3.5695 - learning_rate: 1.0000e-05
+Epoch 24/100
+352/352 - 379s - 1s/step - accuracy: 1.0000 - loss: 2.1867e-05 - val_accuracy: 0.6567 - val_loss: 3.5877 - learning_rate: 1.0000e-05
+Epoch 25/100
+352/352 - 382s - 1s/step - accuracy: 1.0000 - loss: 2.0002e-05 - val_accuracy: 0.6572 - val_loss: 3.5979 - learning_rate: 1.0000e-05
+Epoch 26/100
+352/352 - 391s - 1s/step - accuracy: 1.0000 - loss: 2.1295e-05 - val_accuracy: 0.6576 - val_loss: 3.5887 - learning_rate: 1.0000e-05
+Epoch 27/100
+352/352 - 439s - 1s/step - accuracy: 1.0000 - loss: 1.7200e-05 - val_accuracy: 0.6581 - val_loss: 3.5970 - learning_rate: 1.0000e-05
+Epoch 28/100
+352/352 - 452s - 1s/step - accuracy: 1.0000 - loss: 1.7385e-05 - val_accuracy: 0.6578 - val_loss: 3.6163 - learning_rate: 1.0000e-05
+Epoch 29/100
+352/352 - 403s - 1s/step - accuracy: 1.0000 - loss: 1.6152e-05 - val_accuracy: 0.6582 - val_loss: 3.6293 - learning_rate: 1.0000e-05
+Epoch 30/100
+352/352 - 400s - 1s/step - accuracy: 1.0000 - loss: 1.6073e-05 - val_accuracy: 0.6593 - val_loss: 3.6233 - learning_rate: 1.0000e-05
+Epoch 31/100
+352/352 - 413s - 1s/step - accuracy: 1.0000 - loss: 1.4666e-05 - val_accuracy: 0.6584 - val_loss: 3.6362 - learning_rate: 1.0000e-06
+Epoch 32/100
+352/352 - 367s - 1s/step - accuracy: 1.0000 - loss: 1.8531e-05 - val_accuracy: 0.6576 - val_loss: 3.6508 - learning_rate: 1.0000e-06
+Epoch 33/100
+352/352 - 377s - 1s/step - accuracy: 1.0000 - loss: 1.5177e-05 - val_accuracy: 0.6571 - val_loss: 3.6590 - learning_rate: 1.0000e-06
+Epoch 34/100
+352/352 - 390s - 1s/step - accuracy: 1.0000 - loss: 1.4315e-05 - val_accuracy: 0.6567 - val_loss: 3.6675 - learning_rate: 1.0000e-06
+Epoch 35/100
+352/352 - 440s - 1s/step - accuracy: 1.0000 - loss: 1.3928e-05 - val_accuracy: 0.6568 - val_loss: 3.6701 - learning_rate: 1.0000e-06
+Epoch 36/100
+352/352 - 384s - 1s/step - accuracy: 1.0000 - loss: 1.5357e-05 - val_accuracy: 0.6569 - val_loss: 3.6731 - learning_rate: 1.0000e-06
+Epoch 37/100
+352/352 - 375s - 1s/step - accuracy: 1.0000 - loss: 1.3990e-05 - val_accuracy: 0.6568 - val_loss: 3.6779 - learning_rate: 1.0000e-06
+Epoch 38/100
+352/352 - 365s - 1s/step - accuracy: 1.0000 - loss: 1.3247e-05 - val_accuracy: 0.6562 - val_loss: 3.6928 - learning_rate: 1.0000e-06
+Epoch 39/100
+352/352 - 374s - 1s/step - accuracy: 1.0000 - loss: 1.3696e-05 - val_accuracy: 0.6562 - val_loss: 3.6936 - learning_rate: 1.0000e-06
+Epoch 40/100
+352/352 - 389s - 1s/step - accuracy: 1.0000 - loss: 1.4126e-05 - val_accuracy: 0.6570 - val_loss: 3.6833 - learning_rate: 1.0000e-06
+Epoch 41/100
+352/352 - 399s - 1s/step - accuracy: 1.0000 - loss: 1.5160e-05 - val_accuracy: 0.6569 - val_loss: 3.6851 - learning_rate: 1.0000e-07
+Epoch 42/100
+352/352 - 455s - 1s/step - accuracy: 1.0000 - loss: 1.3239e-05 - val_accuracy: 0.6568 - val_loss: 3.6880 - learning_rate: 1.0000e-07
+Epoch 43/100
+352/352 - 420s - 1s/step - accuracy: 1.0000 - loss: 1.3930e-05 - val_accuracy: 0.6567 - val_loss: 3.6906 - learning_rate: 1.0000e-07
+Epoch 44/100
+[?2004h(base) [01;32mubuntu@darian-onchis[00m:[01;34m~/dds_paper/DDS_Paper[00m$ [K(base) [01;32mubuntu@darian-onchis[00m:[01;34m~/dds_paper/DDS_Paper[00m$ 352/352 - 410s - 1s/step - accuracy: 1.0000 - loss: 1.3652e-05 - val_accuracy: 0.6567 - val_loss: 3.6910 - learning_rate: 1.0000e-07
+Epoch 45/100
+352/352 - 389s - 1s/step - accuracy: 1.0000 - loss: 1.4369e-05 - val_accuracy: 0.6566 - val_loss: 3.6918 - learning_rate: 1.0000e-07
+Epoch 46/100
+352/352 - 396s - 1s/step - accuracy: 1.0000 - loss: 1.3893e-05 - val_accuracy: 0.6567 - val_loss: 3.6916 - learning_rate: 1.0000e-07
+Epoch 47/100
+352/352 - 407s - 1s/step - accuracy: 1.0000 - loss: 1.3576e-05 - val_accuracy: 0.6567 - val_loss: 3.6932 - learning_rate: 1.0000e-07
+Epoch 48/100
+352/352 - 443s - 1s/step - accuracy: 1.0000 - loss: 1.3653e-05 - val_accuracy: 0.6567 - val_loss: 3.6928 - learning_rate: 1.0000e-07
+Epoch 49/100
+352/352 - 416s - 1s/step - accuracy: 1.0000 - loss: 1.2458e-05 - val_accuracy: 0.6566 - val_loss: 3.6940 - learning_rate: 1.0000e-07
+Epoch 50/100
+352/352 - 407s - 1s/step - accuracy: 1.0000 - loss: 1.3975e-05 - val_accuracy: 0.6566 - val_loss: 3.6944 - learning_rate: 1.0000e-07
+Epoch 51/100
+352/352 - 450s - 1s/step - accuracy: 1.0000 - loss: 1.4664e-05 - val_accuracy: 0.6566 - val_loss: 3.6945 - learning_rate: 1.0000e-08
+Epoch 52/100
+352/352 - 412s - 1s/step - accuracy: 1.0000 - loss: 1.6797e-05 - val_accuracy: 0.6566 - val_loss: 3.6945 - learning_rate: 1.0000e-08
+Epoch 53/100
+352/352 - 412s - 1s/step - accuracy: 1.0000 - loss: 1.3352e-05 - val_accuracy: 0.6566 - val_loss: 3.6944 - learning_rate: 1.0000e-08
+Epoch 54/100
+352/352 - 408s - 1s/step - accuracy: 1.0000 - loss: 1.2282e-05 - val_accuracy: 0.6566 - val_loss: 3.6944 - learning_rate: 1.0000e-08
+Epoch 55/100
+352/352 - 409s - 1s/step - accuracy: 1.0000 - loss: 1.2446e-05 - val_accuracy: 0.6566 - val_loss: 3.6944 - learning_rate: 1.0000e-08
+Epoch 56/100
+352/352 - 452s - 1s/step - accuracy: 1.0000 - loss: 1.3287e-05 - val_accuracy: 0.6566 - val_loss: 3.6946 - learning_rate: 1.0000e-08
+Epoch 57/100
+352/352 - 424s - 1s/step - accuracy: 1.0000 - loss: 1.3976e-05 - val_accuracy: 0.6566 - val_loss: 3.6949 - learning_rate: 1.0000e-08
+Epoch 58/100
+352/352 - 428s - 1s/step - accuracy: 1.0000 - loss: 1.3338e-05 - val_accuracy: 0.6565 - val_loss: 3.6952 - learning_rate: 1.0000e-08
+Processing: PGB_30_1
+/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/keras/src/layers/rnn/rnn.py:205: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(**kwargs)
+2024-03-15 09:52:47.547839: W external/local_tsl/tsl/framework/cpu_allocator_impl.cc:83] Allocation of 690949440 exceeds 10% of free system memory.
+Epoch 1/100
+^CTraceback (most recent call last):
+  File "/home/ubuntu/dds_paper/DDS_Paper/run.py", line 358, in <module>
+    model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=100, batch_size=2048, callbacks=[early_stopping, lr_scheduler], verbose=2)
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/keras/src/utils/traceback_utils.py", line 118, in error_handler
+    return fn(*args, **kwargs)
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/keras/src/backend/tensorflow/trainer.py", line 323, in fit
+    logs = self.train_function(iterator)
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/util/traceback_utils.py", line 150, in error_handler
+    return fn(*args, **kwargs)
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/polymorphic_function.py", line 833, in __call__
+    result = self._call(*args, **kwds)
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/polymorphic_function.py", line 878, in _call
+    results = tracing_compilation.call_function(
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/tracing_compilation.py", line 139, in call_function
+    return function._call_flat(  # pylint: disable=protected-access
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/concrete_function.py", line 1322, in _call_flat
+    return self._inference_function.call_preflattened(args)
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/atomic_function.py", line 216, in call_preflattened
+    flat_outputs = self.call_flat(*args)
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/polymorphic_function/atomic_function.py", line 251, in call_flat
+    outputs = self._bound_context.call_function(
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/context.py", line 1500, in call_function
+    outputs = execute.execute(
+  File "/home/ubuntu/miniconda3/envs/ltn/lib/python3.10/site-packages/tensorflow/python/eager/execute.py", line 53, in quick_execute
+    tensors = pywrap_tfe.TFE_Py_Execute(ctx._handle, device_name, op_name,
+KeyboardInterrupt
+
+[?2004h(ltn) [01;32mubuntu@darian-onchis[00m:[01;34m~/dds_paper/DDS_Paper[00m$ df
+[?2004lFilesystem     1K-blocks      Used Available Use% Mounted on
+tmpfs            1637228      1064   1636164   1% /run
+/dev/vda1      203056560 184158424  18881752  91% /
+tmpfs            8186132        44   8186088   1% /dev/shm
+tmpfs               5120         0      5120   0% /run/lock
+/dev/vda15        106858      6165    100693   6% /boot/efi
+tmpfs            1637224         4   1637220   1% /run/user/1000
+[?2004h(ltn) [01;32mubuntu@darian-onchis[00m:[01;34m~/dds_paper/DDS_Paper[00m$ dfpython run.py[5Plsof +L1
+[?2004l[?2004h(ltn) [01;32mubuntu@darian-onchis[00m:[01;34m~/dds_paper/DDS_Paper[00m$ lsof +L1df[Kpython run.py[5Plsof +L1python run.pyconda activate ltn[5Pscreen -S ddspython DDS_Paper/LSTM_SHAP.py[10PLSTM_SHAP.pyDDS_Paper/LSTM_SHAP.py[16Pscreen -S ddsconda activate ltn[5Ppython run.py[5Plsof +L1python run.pydf[Klsof +L1[Klsof +L1df[Kpython run.py[5Plsof +L1python run.pydf[Klsof +L1[Klsof +L1
+[?2004l[?2004h(ltn) [01;32mubuntu@darian-onchis[00m:[01;34m~/dds_paper/DDS_Paper[00m$ lsof +L1df[Klsof +L1[K
