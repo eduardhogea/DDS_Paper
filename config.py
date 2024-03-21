@@ -30,7 +30,6 @@ num_features = 8  # Based on the original number of features before sequencing
 # Prepare a list of base names to avoid redundancy
 processed_bases = set()
 
-num_folds = 5
 batch_size = 512
 epochs = 5
 patience = 20
