@@ -12,7 +12,7 @@ csv_directory = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs'
 data_root_folder = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/PGB/PGB'
 sequences_directory = "/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs/sequences"
 model_save_directory = "/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/models"
-model_path = "/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/models/model.keras"
+model_path = "/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/models/model.h5"
 
 # Data Processing
 chunk_size = 100000  # Adjust the chunk size according to your memory limitations
@@ -22,7 +22,7 @@ processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
 # Model Training Parameters
 batch_size = 512
-epochs = 5
+epochs = 1
 patience = 20
 learning_rate = 0.001
 n_splits = 4
@@ -30,6 +30,7 @@ reg_value = 0.001
 num_train_samples = 20000
 num_test_samples = 4000
 reg_type = "l1"
+n_samples = 500
 
 # Seed for reproducibility
 np.random.seed(45)
