@@ -22,17 +22,18 @@ processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
 # Model Training Parameters
 batch_size = 512
-epochs = 1
+epochs = 10
 patience = 20
-learning_rate = 0.001
-n_splits = 2
+learning_rate = 0.0005
+n_splits = 4
 reg_value = 0.001
-num_train_samples = 200
-num_test_samples = 40
+num_train_samples = 20000
+num_test_samples = 4000
 reg_type = "l1"
-n_samples = 500
+n_samples = 5000
 num_classes = 9
 buffer_size = 200
+ltn_batch = 1000
 
 # Seed for reproducibility
 np.random.seed(45)

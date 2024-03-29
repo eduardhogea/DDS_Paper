@@ -1,12 +1,19 @@
 import os
 import numpy as np
 import pandas as pd
+from sklearn.calibration import LabelEncoder
 from tqdm import tqdm
 
-from code.util import extract_speed_from_filename
-from code.data_scaling import load_and_scale_data
-import config
+from util import extract_speed_from_filename
+from data_scaling import load_and_scale_data
 import joblib
+
+def load_sequences(sequence_file_path, label_file_path):
+    sequences = np.load(sequence_file_path)
+    labels = np.load(label_file_path)
+    encoder = LabelEncoder()
+    labels_encoded = encoder.fit_transform(labels)
+    return sequences, labels_encoded
 
 def create_sequences(df, sequence_length):
     sequences = []
@@ -72,30 +79,3 @@ def add_speed_feature_and_save(input_directory, output_directory, sequence_lengt
             
             
             
-
-# Iterate over your dataset files
-for root, dirs, files in os.walk(config.csv_directory):
-    for file in sorted(files):
-        if file.endswith('.csv') and not file.endswith('_scaled.csv'):  # Process only unscaled .csv files
-            csv_path = os.path.join(root, file)
-            if 'train' in file:
-                # Handle training data
-                scaler_path = os.path.join(root, 'scaler_' + file.replace('.csv', '.joblib'))
-                scaled_train_df = load_and_scale_data(csv_path, save_scaler_path=scaler_path)
-                # Save the scaled training data
-                scaled_csv_path = csv_path.replace('.csv', '_scaled.csv')
-                scaled_train_df.to_csv(scaled_csv_path, index=False)
-            elif 'test' in file:
-                # Handle testing data
-                scaler_path = os.path.join(root, 'scaler_' + file.replace('_test.csv', '_train.joblib'))
-                scaler = joblib.load(scaler_path) if os.path.exists(scaler_path) else None
-                scaled_test_df = load_and_scale_data(csv_path, scaler=scaler)
-                # Save the scaled testing data
-                scaled_csv_path = csv_path.replace('.csv', '_scaled.csv')
-                scaled_test_df.to_csv(scaled_csv_path, index=False)
-
-            # Delete the original unscaled .csv file
-            os.remove(csv_path)
-            
-#create sequences
-save_sequences(config.csv_directory, config.sequences_directory, config.sequence_length)

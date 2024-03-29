@@ -3,8 +3,7 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
 from tensorflow.keras.callbacks import LearningRateScheduler, EarlyStopping
-from code.model_creation import create_model
-import config
+from model_creation import create_model
 
 def normalize_importances(importances):
     """

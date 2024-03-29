@@ -6,7 +6,6 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import SparseCategoricalCrossentropy
 from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras import regularizers
-import config
 
 def lr_schedule(epoch, lr):
     if epoch % 10 == 0 and epoch > 0:
@@ -45,7 +44,7 @@ def create_model(input_shape, num_classes, reg_type='l2', reg_value=0.001, retur
             loss=SparseCategoricalCrossentropy(from_logits=True),
             metrics=['accuracy'])
     else:
-        model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=Adam(learning_rate=0.001), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
 class LSTMModel(Model):
@@ -79,7 +78,7 @@ class LSTMModel(Model):
         else:
             self.probabilities_layer = Dense(num_classes, activation='softmax')
         
-        self.compile_model()
+        #self.compile_model()
     
     def call(self, inputs, training=False):
         x = inputs

@@ -9,11 +9,14 @@ import os
 import pickle
 import random
 import re
+import sys
+sys.path.append('../')
 
 # Third-party library imports
-from model_creation import LSTMModel, load_sequences, lr_schedule
+from model_creation import LSTMModel, lr_schedule
+from sequence_generation import load_sequences
 from model_evaluation import kfold_cross_validation, normalize_importances, permutation_importance_per_class
-from ltn import axioms, test_step, train_step
+#from ltn_utils import axioms, test_step, train_step
 from pgb_data_processing import overview_csv_files, process_pgb_data
 from data_scaling import load_and_scale_data
 from sequence_generation import save_sequences
@@ -88,6 +91,7 @@ reg_type = config.reg_type
 n_samples = config.n_samples
 num_classes = config.num_classes
 buffer_size = config.buffer_size
+ltn_batch = config.ltn_batch
 
 
 metrics_dict = {
@@ -113,6 +117,10 @@ class_5 = ltn.Constant(5, trainable=False)
 class_6 = ltn.Constant(6, trainable=False)
 class_7 = ltn.Constant(7, trainable=False)
 class_8 = ltn.Constant(8, trainable=False)
+
+#p = ltn.Predicate.FromLogits(model, activation_function="softmax", with_class_indexing=True)
+
+
 
 
 def main():
@@ -171,7 +179,6 @@ def main():
                     continue
                 counter+=1
                 
-                model_filepath = os.path.join(model_save_directory, f"saved.h5")
                 
                     
                     
@@ -184,6 +191,17 @@ def main():
                 test_sequence_file_path = os.path.join(sequences_directory, f"{base_name}_test_scaled_sequences.npy")
                 test_label_file_path = os.path.join(sequences_directory, f"{base_name}_test_scaled_labels.npy")
                 X_test, y_test = load_sequences(test_sequence_file_path, test_label_file_path)
+
+                # Shuffle the sequences and corresponding labels
+                train_indices = np.arange(len(X_train))
+                np.random.shuffle(train_indices)
+                X_train = X_train[train_indices]
+                y_train = y_train[train_indices]
+
+                test_indices = np.arange(len(X_test))
+                np.random.shuffle(test_indices)
+                X_test = X_test[test_indices]
+                y_test = y_test[test_indices]
 
                 # Merge for cross-validation
                 X = np.concatenate((X_train, X_test), axis=0)
@@ -199,22 +217,17 @@ def main():
 
                     model = LSTMModel(input_shape=input_shape, num_classes=num_classes, reg_type=reg_type, reg_value=reg_value, return_logits=True)
                     
+                    model.compile(optimizer=Adam(learning_rate=0.001),
+                        loss=SparseCategoricalCrossentropy(from_logits=True),
+                        metrics=['accuracy'])
                     
                     lr_scheduler = LearningRateScheduler(lr_schedule)
                     early_stopping = EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True)
 
-                    # Add ModelCheckpoint and TensorBoard for improved monitoring and model saving
-                    model_filepath = os.path.join(model_save_directory, f"model_{base_name}_fold_{fold+1}.h5")
-                    checkpoint = ModelCheckpoint(model_filepath, save_best_only=True, monitor='val_loss', save_weights_only=True)
-                    tensorboard = TensorBoard(log_dir=f"./logs/{base_name}_fold_{fold+1}")
-
-
-
+                    model_filepath = os.path.join(model_save_directory, f"model_{base_name}_fold_{fold+1}")
+                    checkpoint = ModelCheckpoint(model_filepath, save_best_only=True, monitor='val_loss', save_weights_only=False)
                     history = model.fit(X_train_fold, y_train_fold, validation_data=(X_val_fold, y_val_fold),
-                                        epochs=epochs, batch_size=batch_size, callbacks=[early_stopping, lr_scheduler, checkpoint, tensorboard], verbose=1)
-
-                    
-                    
+                                        epochs=epochs, batch_size=batch_size, callbacks=[early_stopping, lr_scheduler, checkpoint], verbose=1)
                     
                     # Assuming your model outputs class indices directly
                     y_val_pred_classes = model.predict(X_val_fold)
@@ -240,6 +253,56 @@ def main():
                     
                     p = ltn.Predicate.FromLogits(model, activation_function="softmax", with_class_indexing=True)
                     
+                    @tf.function
+                    def axioms(features, labels, training=False):
+                        x_A = ltn.Variable("x_A", features[labels == 0])
+                        x_B = ltn.Variable("x_B", features[labels == 1])
+                        x_C = ltn.Variable("x_C", features[labels == 2])
+                        x_D = ltn.Variable("x_D", features[labels == 3])
+                        x_E = ltn.Variable("x_E", features[labels == 4])
+                        x_F = ltn.Variable("x_F", features[labels == 5])
+                        x_G = ltn.Variable("x_G", features[labels == 6])
+                        x_H = ltn.Variable("x_H", features[labels == 7])
+                        x_I = ltn.Variable("x_I", features[labels == 8])
+                        axioms = [
+                            Forall(x_A, p([x_A, class_0], training=training)),
+                            Forall(x_B, p([x_B, class_1], training=training)),
+                            Forall(x_C, p([x_C, class_2], training=training)),
+                            Forall(x_D, p([x_D, class_3], training=training)),
+                            Forall(x_E, p([x_E, class_4], training=training)),
+                            Forall(x_F, p([x_F, class_5], training=training)),
+                            Forall(x_G, p([x_G, class_6], training=training)),
+                            Forall(x_H, p([x_H, class_7], training=training)),
+                            Forall(x_I, p([x_I, class_8], training=training))
+                        ]
+                        sat_level = formula_aggregator(axioms).tensor
+                        return sat_level
+
+                    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+                    
+                    @tf.function
+                    def train_step(features, labels):
+                        # sat and update
+                        with tf.GradientTape() as tape:
+                            sat = axioms(features, labels, training=True)
+                            loss = 1.-sat
+                        gradients = tape.gradient(loss, p.trainable_variables)
+                        optimizer.apply_gradients(zip(gradients, p.trainable_variables))
+                        sat = axioms(features, labels) # compute sat without dropout
+                        metrics_dict['train_sat_kb'](sat)
+                        # accuracy
+                        predictions = model([features])
+                        metrics_dict['train_accuracy'](tf.one_hot(labels,9),predictions)
+                        
+                    @tf.function
+                    def test_step(features, labels):
+                        # sat
+                        sat = axioms(features, labels)
+                        metrics_dict['test_sat_kb'](sat)
+                        # accuracy
+                        predictions = model([features])
+                        metrics_dict['test_accuracy'](tf.one_hot(labels,9),predictions)
+                    
                     normalized_importances = {}
 
                     # Assuming normalize_importances function logic remains the same and is applicable here.
@@ -249,12 +312,12 @@ def main():
                         
                     ds_train_fold = tf.data.Dataset.from_tensor_slices((X_train_fold, y_train_fold))
                     ds_val_fold = tf.data.Dataset.from_tensor_slices((X_val_fold, y_val_fold))
-
+                    
+                    
                     # Shuffle the dataset before batching
-                    ds_train_fold = ds_train_fold.shuffle(buffer_size).batch(batch_size)
-                    ds_val_fold = ds_val_fold.shuffle(buffer_size).batch(batch_size)
+                    ds_train_fold = ds_train_fold.shuffle(buffer_size).batch(ltn_batch)
+                    ds_val_fold = ds_val_fold.shuffle(buffer_size).batch(ltn_batch)
 
-                    small_batch_size = 10000  # Adjust batch size as needed
                     #ds_val_fold = tf.data.Dataset.from_tensor_slices((X,y)).batch(small_batch_size)
                     for batch_features, batch_labels in ds_val_fold:
                         
@@ -276,8 +339,8 @@ def main():
                         ds_val_fold,
                         train_step,
                         test_step,
-                        csv_path="iris_results.csv",
-                        track_metrics=20
+                        csv_path="./results.csv",
+                        track_metrics=1
                     )
                     
 
@@ -331,4 +394,7 @@ def clean_directory(directory):
             print(f"Failed to delete {file_path}: {e}")
             
 if __name__ == "__main__":
+
+
     main()
+    
