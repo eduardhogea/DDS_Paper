@@ -32,6 +32,7 @@ num_test_samples = 40
 reg_type = "l1"
 n_samples = 500
 num_classes = 9
+buffer_size = 200
 
 # Seed for reproducibility
 np.random.seed(45)
