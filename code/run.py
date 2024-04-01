@@ -82,7 +82,7 @@ num_classes = config.num_classes
 buffer_size = config.buffer_size
 ltn_batch = config.ltn_batch
 
-
+# LTN metrics and groundings
 metrics_dict = {
     'train_sat_kb': tf.keras.metrics.Mean(name='train_sat_kb'),
     'test_sat_kb': tf.keras.metrics.Mean(name='test_sat_kb'),
@@ -116,7 +116,7 @@ def main():
     args = parser.parse_args()
     
     if args.create_sequences:
-        # Clean the directories
+        # Clean the directories when creating new sequences
         clean_directory(csv_directory)
         clean_directory(sequences_directory)
         
@@ -143,7 +143,7 @@ def main():
                         # Save the scaled testing data
                         scaled_csv_path = csv_path.replace('.csv', '_scaled.csv')
                         scaled_test_df.to_csv(scaled_csv_path, index=False)
-                    # Delete the original unscaled .csv file
+                    # Delete the original unscaled .csv file for memory preservation
                     os.remove(csv_path)
                     
         # Create sequences
