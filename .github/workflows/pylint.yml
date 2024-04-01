@@ -5,7 +5,7 @@ on: [push]
 jobs:
   pylint:
     name: Run Pylint
-    runs-on: linux
+    runs-on: ubuntu-latest
 
     steps:
     - name: Check out repository code
