@@ -20,7 +20,7 @@ from model_evaluation import kfold_cross_validation, normalize_importances, perm
 from pgb_data_processing import overview_csv_files, process_pgb_data
 from data_scaling import load_and_scale_data
 from sequence_generation import save_sequences
-import config
+import config.config as config
 import joblib
 import numpy as np
 import pandas as pd
@@ -50,7 +50,7 @@ from tensorflow.keras.layers import Input, LSTM, Dropout, Dense
 from tensorflow.keras import regularizers
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import CategoricalCrossentropy
-import commons
+import code.commons as commons
 
 from keras.models import Sequential
 from keras.layers import LSTM, Dropout, Dense, Input
