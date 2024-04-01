@@ -2,6 +2,7 @@
 you can run the script with python script.py --create-sequences to only create sequences, python script.py --train-model to only train the model, or python script.py --create-sequences --train-model to perform both tasks.
 '''
 
+# Standard library imports
 import argparse
 import csv
 import math
@@ -10,55 +11,43 @@ import pickle
 import random
 import re
 import sys
-sys.path.append('../')
+
+# Append config directory to sys.path
+script_dir = os.path.dirname(os.path.abspath(__file__))  # Absolute dir the script is in
+sys.path.append(os.path.join(script_dir, '..', 'config'))
 
 # Third-party library imports
-from model_creation import LSTMModel, lr_schedule
-from sequence_generation import load_sequences
-from model_evaluation import kfold_cross_validation, normalize_importances, permutation_importance_per_class
-#from ltn_utils import axioms, test_step, train_step
-from pgb_data_processing import overview_csv_files, process_pgb_data
-from data_scaling import load_and_scale_data
-from sequence_generation import save_sequences
-import config.config as config
 import joblib
+import ltn
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import tensorflow as tf
-from keras import layers, models, optimizers, callbacks, regularizers, utils
-from keras.callbacks import EarlyStopping, LearningRateScheduler, ModelCheckpoint, TensorBoard
-from keras.layers import Dense, Dropout, LSTM, Input
-from keras.models import Sequential, load_model
-from keras.optimizers import Adam
-from keras.regularizers import l2
-from keras.models import load_model
-from keras.utils import to_categorical
 from rich.console import Console
 from rich.table import Table
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
-from tqdm import tqdm
-from numpy import mean
-from collections import Counter
-import ltn
-import tensorflow as tf
-from tensorflow.keras import Model
-from tensorflow.keras.layers import Input, LSTM, Dropout, Dense
-from tensorflow.keras import regularizers
+from tensorflow.keras import layers, models, optimizers, callbacks, regularizers
+from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, ModelCheckpoint, TensorBoard
+from tensorflow.keras.layers import Dense, Dropout, LSTM, Input
+from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import CategoricalCrossentropy
-import code.commons as commons
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.losses import CategoricalCrossentropy, SparseCategoricalCrossentropy
+from tqdm import tqdm
 
-from keras.models import Sequential
-from keras.layers import LSTM, Dropout, Dense, Input
-from keras.regularizers import l2
-from keras.optimizers import Adam
-from keras import regularizers
-from tensorflow.keras.losses import CategoricalCrossentropy
-from tensorflow.keras.losses import SparseCategoricalCrossentropy
+# Local module imports
+import config as config
+from model_creation import LSTMModel, lr_schedule
+from sequence_generation import load_sequences, save_sequences
+from model_evaluation import kfold_cross_validation, normalize_importances, permutation_importance_per_class
+from pgb_data_processing import overview_csv_files, process_pgb_data
+from data_scaling import load_and_scale_data
+import commons as commons
+
 
 
 
@@ -117,9 +106,6 @@ class_5 = ltn.Constant(5, trainable=False)
 class_6 = ltn.Constant(6, trainable=False)
 class_7 = ltn.Constant(7, trainable=False)
 class_8 = ltn.Constant(8, trainable=False)
-
-#p = ltn.Predicate.FromLogits(model, activation_function="softmax", with_class_indexing=True)
-
 
 
 

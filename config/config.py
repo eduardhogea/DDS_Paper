@@ -1,18 +1,24 @@
+import os
+import sys
 import numpy as np
 
-# Paths
-dataset_path = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU'
-PGB_path = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/PGB/PGB'
-RGB_path = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/RGB/RGB'
-csv_file = '/home/ubuntu/dds_paper/DDS_Paper/data/data_robust.csv'
-preprocessor_file = 'preprocessor.joblib'
-train_path = '/home/ubuntu/dds_paper/DDS_Paper/data/train.csv'
-val_path = '/home/ubuntu/dds_paper/DDS_Paper/data/val.csv'
-csv_directory = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs'
-data_root_folder = '/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/PGB/PGB'
-sequences_directory = "/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/data/csvs/sequences"
-model_save_directory = "/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/models"
-model_path = "/home/ubuntu/dds_paper/DDS_Paper/data/DDS_Data_SEU/models/model.h5"
+# Adjust BASE_DIR to point to DDS_PAPER, the parent of the current script's directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Paths, assuming the structure you described
+config_path = os.path.join(BASE_DIR, 'config', 'config.py')
+dataset_path = os.path.join(BASE_DIR, 'data', 'DDS_Data_SEU')
+PGB_path = os.path.join(dataset_path, 'PGB', 'PGB')
+RGB_path = os.path.join(dataset_path, 'RGB', 'RGB')
+csv_file = os.path.join(dataset_path, 'data_robust.csv')
+preprocessor_file = os.path.join(BASE_DIR, 'preprocessor.joblib')
+train_path = os.path.join(dataset_path, 'train.csv')
+val_path = os.path.join(dataset_path, 'val.csv')
+csv_directory = os.path.join(dataset_path, 'data', 'csvs')
+data_root_folder = PGB_path
+sequences_directory = os.path.join(csv_directory, 'sequences')
+model_save_directory = os.path.join(dataset_path, 'models')
+model_path = os.path.join(model_save_directory, 'model.h5')
 
 # Data Processing
 chunk_size = 100000  # Adjust the chunk size according to your memory limitations
