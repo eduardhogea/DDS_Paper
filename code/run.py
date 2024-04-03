@@ -318,6 +318,7 @@ def main():
                         track_metrics=1
                     )
                     
+                    
                 if fold_metrics:
                     # Calculate the average of each metric across all folds
                     avg_accuracy = mean([metric[0] for metric in fold_metrics])
