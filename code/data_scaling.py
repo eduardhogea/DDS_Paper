@@ -1,6 +1,6 @@
-import pandas as pd  # Importing pandas for data manipulation
-from sklearn.preprocessing import StandardScaler  # Importing StandardScaler for data scaling
-import joblib  # Importing joblib for model serialization
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+import joblib
 
 def load_and_scale_data(csv_path, scaler=None, save_scaler_path=None):
     """

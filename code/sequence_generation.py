@@ -23,22 +23,22 @@ def create_sequences(df, sequence_length):
     for fault in fault_types:
         df_fault = df[df['Fault'] == fault]
         X = df_fault.drop('Fault', axis=1).values
-        y = df_fault['Fault'].iloc[0]  # Updated to use iloc for consistency
+        y = df_fault['Fault'].iloc[0]
         
         for i in range(len(df_fault) - sequence_length + 1):
             sequences.append(X[i:i+sequence_length])
-            labels.append(fault)  # Keep the fault type as is
+            labels.append(fault)
     
     return np.array(sequences), np.array(labels)
 
 
 def save_sequences(input_directory, output_directory, sequence_length):
     """
-    Generates sequences and saves them as NumPy files, one for sequences and one for labels.
+    Generates sequences and saves them as numpy files, one for sequences and one for labels.
     
     Parameters:
     - input_directory: The directory with the original, scaled data files.
-    - output_directory: The directory where the NumPy sequence files will be saved.
+    - output_directory: The directory where the numpy sequence files will be saved.
     - sequence_length: The number of consecutive samples in each sequence.
     """
     if not os.path.exists(output_directory):

@@ -4,7 +4,6 @@ from tqdm import tqdm
 import pickle
 
 def memmap_append_and_save(input_directory, output_directory, dataset_type, file_type):
-    # Update the output file path to indicate pickle format
     output_file_path = os.path.join(output_directory, f"{dataset_type}_merged_{file_type}.pkl")
 
     if not os.path.exists(output_directory):

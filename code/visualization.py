@@ -14,7 +14,7 @@ def display_samples(sequences_file_path, labels_file_path, num_samples=1):
     sequences = np.load(sequences_file_path)
     labels = np.load(labels_file_path)
     
-    # Determine the number of samples to display (cannot exceed the length of the data)
+    # Determine the number of samples to display
     num_samples = min(num_samples, len(sequences))
     
     # Display the specified number of samples

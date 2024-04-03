@@ -11,7 +11,7 @@ def normalize_importances(importances):
     ensuring all values are positive. This function now expects
     a list (or numpy array) of numerical importances as its input.
     """
-    # Convert the importances to a numpy array to ensure compatibility with numpy operations
+    # Convert the importances to a numpy array
     importances = np.array(importances)
     abs_importances = np.abs(importances)  # Take the absolute values to ensure all values are positive
     total_importance = np.sum(abs_importances)
@@ -28,7 +28,7 @@ def normalize_importances(importances):
 
 
 def calculate_class_accuracies(predictions, true_labels):
-    # Assuming predictions are probabilities, get the predicted class indices
+    # Given that predictions are probabilities, get the predicted class indices
     pred_labels = np.argmax(predictions, axis=1)
     
     # true_labels are already integer labels, no need for np.argmax
@@ -55,7 +55,7 @@ def permutation_importance_per_class(model, X_val, y_val, n_repeats=10, n_sample
     baseline_predictions = model.predict(X_val_subset, verbose = 0)
     baseline_class_accuracies = calculate_class_accuracies(baseline_predictions, y_val_subset)
     
-    # Prepare storage for importances, using a dictionary to accommodate variable class presence
+    # Prepare storage for importances
     feature_importances = {class_index: np.zeros((X_val.shape[2], n_repeats)) for class_index in baseline_class_accuracies.keys()}
     
     for feature_index in tqdm(range(X_val.shape[2]), desc='Calculating Feature Importance'):
@@ -81,7 +81,7 @@ def permutation_importance_per_class(model, X_val, y_val, n_repeats=10, n_sample
 
             
 def kfold_cross_validation(X, y, num_folds=5):
-    input_shape = X.shape[1:]  # Assuming X is (num_samples, time_steps, features)
+    input_shape = X.shape[1:]  # (num_samples, time_steps, features)
     num_classes = y.shape[1]
     kfold = KFold(n_splits=num_folds, shuffle=True, random_state=42)
 

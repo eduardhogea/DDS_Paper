@@ -38,6 +38,7 @@ from tensorflow.keras.regularizers import l2
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.losses import CategoricalCrossentropy, SparseCategoricalCrossentropy
 from tqdm import tqdm
+from numpy import mean
 
 # Local module imports
 import config as config
@@ -153,8 +154,6 @@ def main():
         kf = KFold(n_splits=n_splits, shuffle=False)
         counter = 0
         console = Console()
-
-        # Placeholder for processed base names and metrics
         processed_bases = set()
         metrics_summary = []
 
@@ -172,13 +171,12 @@ def main():
                 train_sequence_file_path = os.path.join(sequences_directory, f"{base_name}_train_scaled_sequences.npy")
                 train_label_file_path = os.path.join(sequences_directory, f"{base_name}_train_scaled_labels.npy")
                 X_train, y_train = load_sequences(train_sequence_file_path, train_label_file_path)
-
-                # Assuming the existence of a test set (adjust if necessary)
+                
                 test_sequence_file_path = os.path.join(sequences_directory, f"{base_name}_test_scaled_sequences.npy")
                 test_label_file_path = os.path.join(sequences_directory, f"{base_name}_test_scaled_labels.npy")
                 X_test, y_test = load_sequences(test_sequence_file_path, test_label_file_path)
 
-                # Shuffle the sequences and corresponding labels
+                # Shuffle the sequences and corresponding labels. Before this they were kept ordered.
                 train_indices = np.arange(len(X_train))
                 np.random.shuffle(train_indices)
                 X_train = X_train[train_indices]
@@ -215,7 +213,7 @@ def main():
                     history = model.fit(X_train_fold, y_train_fold, validation_data=(X_val_fold, y_val_fold),
                                         epochs=epochs, batch_size=batch_size, callbacks=[early_stopping, lr_scheduler, checkpoint], verbose=1)
                     
-                    # Assuming your model outputs class indices directly
+                    
                     y_val_pred_classes = model.predict(X_val_fold)
                     y_val_pred_classes = np.argmax(y_val_pred_classes, axis=1)  # Get predicted classes
 
@@ -291,7 +289,6 @@ def main():
                     
                     normalized_importances = {}
 
-                    # Assuming normalize_importances function logic remains the same and is applicable here.
                     for class_label, importances in class_importances.items():
                         normalized = normalize_importances(importances)
                         normalized_importances[class_label] = normalized
@@ -299,19 +296,11 @@ def main():
                     ds_train_fold = tf.data.Dataset.from_tensor_slices((X_train_fold, y_train_fold))
                     ds_val_fold = tf.data.Dataset.from_tensor_slices((X_val_fold, y_val_fold))
                     
-                    
-                    # Shuffle the dataset before batching
-                    ds_train_fold = ds_train_fold.shuffle(buffer_size).batch(ltn_batch)
-                    ds_val_fold = ds_val_fold.shuffle(buffer_size).batch(ltn_batch)
+                    ds_train_fold = ds_train_fold.batch(ltn_batch)
+                    ds_val_fold = ds_val_fold.batch(ltn_batch)
 
-                    #ds_val_fold = tf.data.Dataset.from_tensor_slices((X,y)).batch(small_batch_size)
                     for batch_features, batch_labels in ds_val_fold:
-                        
-                        # Assuming the axioms function and predicate are prepared for batch processing
                         batch_satisfaction_level = axioms(batch_features, batch_labels, training=False)
-                        
-                        # Print or aggregate the batch satisfaction levels as needed
-                        # .numpy() is used to convert TensorFlow tensors to numpy arrays for printing or further processing
                         print(f"Batch Satisfaction Level: {batch_satisfaction_level.numpy():.4f}")
                         break
                     
@@ -329,9 +318,6 @@ def main():
                         track_metrics=1
                     )
                     
-
-                    
-                        # After processing all folds for the current CSV pair
                 if fold_metrics:
                     # Calculate the average of each metric across all folds
                     avg_accuracy = mean([metric[0] for metric in fold_metrics])
@@ -357,7 +343,6 @@ def main():
 
 
         console.print(f"[bold blue]Model for {base_name} saved.[/]")
-        # Optionally, after all file pairs have been processed, print a summary of averages across all file pairs
         console.print("[bold blue]Overall Averages Across All File Pairs:[/]")
         overall_avg_accuracy = mean([metrics[1] for metrics in metrics_summary])
         overall_avg_precision = mean([metrics[2] for metrics in metrics_summary])
@@ -370,7 +355,7 @@ def main():
         console.print(f"Overall Average F1: {overall_avg_f1:.4f}")
 
 def clean_directory(directory):
-    # Remove all files in the directory
+    # Remove all files in the directory, needed when creating new sequences
     for filename in os.listdir(directory):
         file_path = os.path.join(directory, filename)
         try:
@@ -380,7 +365,4 @@ def clean_directory(directory):
             print(f"Failed to delete {file_path}: {e}")
             
 if __name__ == "__main__":
-
-
     main()
-    
