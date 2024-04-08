@@ -19,7 +19,8 @@ data_root_folder = PGB_path
 sequences_directory = os.path.join(csv_directory, 'sequences')
 model_save_directory = os.path.join(dataset_path, 'models')
 model_path = os.path.join(model_save_directory, 'model.h5')
-
+results_path = os.path.join(BASE_DIR, 'results', 'results.csv')
+results_path_ltn = os.path.join(BASE_DIR, 'results/')
 # Data Processing
 chunk_size = 100000  # Adjust the chunk size according to your memory limitations
 sequence_length = 30  # Define your desired sequence length
@@ -31,7 +32,7 @@ batch_size = 512
 epochs = 2
 patience = 20
 learning_rate = 0.0005
-n_splits = 4
+n_splits = 2
 reg_value = 0.001
 num_train_samples = 20000
 num_test_samples = 4000

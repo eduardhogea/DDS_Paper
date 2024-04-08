@@ -11,6 +11,8 @@ import pickle
 import random
 import re
 import sys
+import csv
+
 
 # Append config directory to sys.path
 script_dir = os.path.dirname(os.path.abspath(__file__))  # Absolute dir the script is in
@@ -47,12 +49,30 @@ from sequence_generation import load_sequences, save_sequences
 from model_evaluation import kfold_cross_validation, normalize_importances, permutation_importance_per_class
 from pgb_data_processing import overview_csv_files, process_pgb_data
 from data_scaling import load_and_scale_data
+from util import concatenate_and_delete_ltn_csv_files
 import commons as commons
+from tensorflow.keras.callbacks import Callback
+
+class MetricsLogger(Callback):
+    def __init__(self, csv_path, fold_number, base_name):
+        super(MetricsLogger, self).__init__()
+        self.csv_path = csv_path
+        self.fold_number = fold_number
+        self.base_name = base_name
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        with open(self.csv_path, 'a', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            # Write epoch number, fold number, and desired metrics to the CSV
+            writer.writerow([self.base_name, epoch + 1, self.fold_number, logs.get('loss'), logs.get('accuracy'), logs.get('val_loss'), logs.get('val_accuracy')])
+
 
 
 
 
 # Configurations
+results_path_ltn = config.results_path_ltn
 model_path = config.model_path
 dataset_path = config.dataset_path
 PGB_path = config.PGB_path
@@ -82,6 +102,7 @@ n_samples = config.n_samples
 num_classes = config.num_classes
 buffer_size = config.buffer_size
 ltn_batch = config.ltn_batch
+results_path = config.results_path
 
 # LTN metrics and groundings
 metrics_dict = {
@@ -107,6 +128,11 @@ class_5 = ltn.Constant(5, trainable=False)
 class_6 = ltn.Constant(6, trainable=False)
 class_7 = ltn.Constant(7, trainable=False)
 class_8 = ltn.Constant(8, trainable=False)
+
+with open(results_path, 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['Speed','Epoch', 'Fold', 'Loss', 'Accuracy', 'Validation Loss', 'Validation Accuracy'])
+
 
 
 
@@ -195,6 +221,7 @@ def main():
                 fold_metrics = []
 
                 for fold, (train_idx, val_idx) in enumerate(kf.split(X, y)):
+                    metrics_logger = MetricsLogger(results_path, fold_number=fold+1, base_name=base_name)
                     console.print(f"[bold green]Training fold {fold + 1}/{n_splits} for {base_name}[/]")
                     X_train_fold, X_val_fold = X[train_idx], X[val_idx]
                     y_train_fold, y_val_fold = y[train_idx], y[val_idx]
@@ -211,7 +238,7 @@ def main():
                     model_filepath = os.path.join(model_save_directory, f"model_{base_name}_fold_{fold+1}")
                     checkpoint = ModelCheckpoint(model_filepath, save_best_only=True, monitor='val_loss', save_weights_only=False)
                     history = model.fit(X_train_fold, y_train_fold, validation_data=(X_val_fold, y_val_fold),
-                                        epochs=epochs, batch_size=batch_size, callbacks=[early_stopping, lr_scheduler, checkpoint], verbose=1)
+                                        epochs=epochs, batch_size=batch_size, callbacks=[early_stopping, lr_scheduler, checkpoint, metrics_logger], verbose=1)
                     
                     
                     y_val_pred_classes = model.predict(X_val_fold)
@@ -226,6 +253,8 @@ def main():
                     recall = recall_score(y_val_true_classes, y_val_pred_classes, average='macro', zero_division=0)
                     f1 = f1_score(y_val_true_classes, y_val_pred_classes, average='macro')
                     fold_metrics.append((accuracy, precision, recall, f1))
+                    
+
 
 
                     console.print(f"Fold {fold+1} Accuracy: {accuracy:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}, F1: {f1:.4f}")
@@ -305,8 +334,8 @@ def main():
                         break
                     
 
-
-
+                    
+                    results_path_ltn_fold = results_path_ltn + base_name +"_fold" + str(fold+1) + '_ltn.csv'
                     commons.train(
                         epochs,
                         metrics_dict,
@@ -314,10 +343,11 @@ def main():
                         ds_val_fold,
                         train_step,
                         test_step,
-                        csv_path="./results.csv",
+                        csv_path=results_path_ltn_fold,
                         track_metrics=1
                     )
                     
+                
                     
                 if fold_metrics:
                     # Calculate the average of each metric across all folds
@@ -335,13 +365,14 @@ def main():
                     console.print(f"Average Precision: {avg_precision:.4f}")
                     console.print(f"Average Recall: {avg_recall:.4f}")
                     console.print(f"Average F1: {avg_f1:.4f}\n")
-                
-                
+
+
 
                 
-            if counter!=0:
+            if counter>3:
                 break
-
+            
+        concatenate_and_delete_ltn_csv_files(results_path_ltn, "results/results_ltn.csv")
 
         console.print(f"[bold blue]Model for {base_name} saved.[/]")
         console.print("[bold blue]Overall Averages Across All File Pairs:[/]")
@@ -354,6 +385,8 @@ def main():
         console.print(f"Overall Average Precision: {overall_avg_precision:.4f}")
         console.print(f"Overall Average Recall: {overall_avg_recall:.4f}")
         console.print(f"Overall Average F1: {overall_avg_f1:.4f}")
+        
+        
 
 def clean_directory(directory):
     # Remove all files in the directory, needed when creating new sequences
