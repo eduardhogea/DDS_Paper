@@ -116,8 +116,8 @@ Not = ltn.Wrapper_Connective(ltn.fuzzy_ops.Not_Std())
 And = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_Prod())
 Or = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSum())
 Implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
-Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=2),semantics="forall")
-formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=2))
+Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=4),semantics="forall")
+formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=4))
 
 class_0 = ltn.Constant(0, trainable=False)
 class_1 = ltn.Constant(1, trainable=False)
@@ -228,7 +228,7 @@ def main():
 
                     model = LSTMModel(input_shape=input_shape, num_classes=num_classes, reg_type=reg_type, reg_value=reg_value, return_logits=True)
                     
-                    model.compile(optimizer=Adam(learning_rate=0.001),
+                    model.compile(optimizer=Adam(learning_rate=learning_rate),
                         loss=SparseCategoricalCrossentropy(from_logits=True),
                         metrics=['accuracy'])
                     
@@ -236,12 +236,14 @@ def main():
                     early_stopping = EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True)
 
                     model_filepath = os.path.join(model_save_directory, f"model_{base_name}_fold_{fold+1}")
-                    checkpoint = ModelCheckpoint(model_filepath, save_best_only=True, monitor='val_loss', save_weights_only=False)
+                    checkpoint = ModelCheckpoint(filepath=model_filepath, save_best_only=True, monitor='val_accuracy', save_weights_only=True, mode='max')
                     history = model.fit(X_train_fold, y_train_fold, validation_data=(X_val_fold, y_val_fold),
                                         epochs=epochs, batch_size=batch_size, callbacks=[early_stopping, lr_scheduler, checkpoint, metrics_logger], verbose=1)
                     
                     
-                    y_val_pred_classes = model.predict(X_val_fold)
+                    model.load_weights(model_filepath)
+                    
+                    y_val_pred_classes = model.predict(X_val_fold, batch_size = batch_size)
                     y_val_pred_classes = np.argmax(y_val_pred_classes, axis=1)  # Get predicted classes
 
                     # Since y_val_fold contains integer labels, there's no need for conversion
@@ -259,9 +261,9 @@ def main():
 
                     console.print(f"Fold {fold+1} Accuracy: {accuracy:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}, F1: {f1:.4f}")
                     
-                    class_importances = permutation_importance_per_class(model, X_val_fold, y_val_fold, n_repeats=4, n_samples=n_samples)
-                    for class_id, importances in class_importances.items():
-                        print(f"{class_id} Feature Importances:", importances)
+                    #class_importances = permutation_importance_per_class(model, X_val_fold, y_val_fold, n_repeats=4, n_samples=n_samples)
+                    #for class_id, importances in class_importances.items():
+                        #print(f"{class_id} Feature Importances:", importances)
                     
                     
                     p = ltn.Predicate.FromLogits(model, activation_function="softmax", with_class_indexing=True)
@@ -291,7 +293,7 @@ def main():
                         sat_level = formula_aggregator(axioms).tensor
                         return sat_level
 
-                    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+                    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate / 10)
                     
                     @tf.function
                     def train_step(features, labels):
@@ -316,17 +318,17 @@ def main():
                         predictions = model([features])
                         metrics_dict['test_accuracy'](tf.one_hot(labels,9),predictions)
                     
-                    normalized_importances = {}
+                    #normalized_importances = {}
 
-                    for class_label, importances in class_importances.items():
-                        normalized = normalize_importances(importances)
-                        normalized_importances[class_label] = normalized
+                    # for class_label, importances in class_importances.items():
+                    #     normalized = normalize_importances(importances)
+                    #     normalized_importances[class_label] = normalized
                         
                     ds_train_fold = tf.data.Dataset.from_tensor_slices((X_train_fold, y_train_fold))
                     ds_val_fold = tf.data.Dataset.from_tensor_slices((X_val_fold, y_val_fold))
                     
-                    ds_train_fold = ds_train_fold.batch(ltn_batch)
-                    ds_val_fold = ds_val_fold.batch(ltn_batch)
+                    ds_train_fold = ds_train_fold.batch(batch_size)
+                    ds_val_fold = ds_val_fold.batch(batch_size)
 
                     for batch_features, batch_labels in ds_val_fold:
                         batch_satisfaction_level = axioms(batch_features, batch_labels, training=False)
@@ -369,8 +371,8 @@ def main():
 
 
                 
-            if counter>3:
-                break
+                if counter>2:
+                    break
             
         concatenate_and_delete_ltn_csv_files(results_path_ltn, "results/results_ltn.csv")
 
@@ -385,7 +387,7 @@ def main():
         console.print(f"Overall Average Precision: {overall_avg_precision:.4f}")
         console.print(f"Overall Average Recall: {overall_avg_recall:.4f}")
         console.print(f"Overall Average F1: {overall_avg_f1:.4f}")
-        
+
         
 
 def clean_directory(directory):
