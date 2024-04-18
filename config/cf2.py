@@ -30,10 +30,10 @@ processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
 # Model Training Parameters
 batch_size = 2048
-epochs = 1
-patience = 200
+epochs = 100
+patience = 2
 learning_rate = 0.0005
-lr_ltn = 0.0001
+lr_ltn = 0.0005
 n_splits = 2
 reg_value = 0.001
 num_train_samples = 5000

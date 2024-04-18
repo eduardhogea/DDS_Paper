@@ -4,3 +4,5 @@ wandb
 extra_data/
 logs
 *.pyc
+progress
+results
