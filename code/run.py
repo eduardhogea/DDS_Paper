@@ -110,7 +110,19 @@ buffer_size = config.buffer_size
 ltn_batch = config.ltn_batch
 results_path = config.results_path
 S = config.S
+lr_ltn = config.lr_ltn
 processed_file_tracker = config.processed_file_tracker
+
+#!!
+model_save_directory = "/home/ubuntu/dds_paper/DDS_Paper/model_weights"
+
+
+# Setting seeds for reproducibility
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+
 
 # LTN metrics and groundings
 metrics_dict = {
@@ -124,8 +136,8 @@ Not = ltn.Wrapper_Connective(ltn.fuzzy_ops.Not_Std())
 And = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_Prod())
 Or = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSum())
 Implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
-Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=3),semantics="forall")
-formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=3))
+Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=2),semantics="forall")
+formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=2))
 
 class_0 = ltn.Constant(0, trainable=False)
 class_1 = ltn.Constant(1, trainable=False)
@@ -256,7 +268,7 @@ def main():
                     lr_scheduler = LearningRateScheduler(lr_schedule)
                     early_stopping = EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True)
 
-                    model_filepath = os.path.join(model_save_directory, f"model_{base_name}_fold_{fold+1}")
+                    model_filepath = os.path.join(model_save_directory, f"model_{base_name}_fold_{fold+1}.h5")
                     checkpoint = ModelCheckpoint(filepath=model_filepath, save_best_only=True, monitor='val_accuracy', save_weights_only=True, mode='max')
                     history = model.fit(X_train_fold, y_train_fold, validation_data=(X_val_fold, y_val_fold),
                                         epochs=epochs, batch_size=batch_size, callbacks=[early_stopping, lr_scheduler, checkpoint, metrics_logger], verbose=1)
@@ -374,6 +386,10 @@ def main():
                         csv_path=results_path_ltn_fold,
                         track_metrics=1
                     )
+                    
+                    model.save_weights(os.path.join(model_save_directory, f"ltn_model_{base_name}_fold_{fold+1}_weights.h5"))
+                    model.save(os.path.join(model_save_directory, f"ltn_tf_model_{base_name}_fold_{fold+1}.tf"))
+                    
                     
                 
                     

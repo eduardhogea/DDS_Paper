@@ -6,3 +6,5 @@ logs
 *.pyc
 progress
 results
+model_weights/
+*.png
