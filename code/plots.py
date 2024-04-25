@@ -9,6 +9,7 @@ import random
 import re
 import sys
 import csv
+from collections import Counter
 
 
 # Append config directory to sys.path
@@ -39,6 +40,8 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.losses import CategoricalCrossentropy, SparseCategoricalCrossentropy
 from tqdm import tqdm
 from numpy import mean
+import seaborn as sns
+from sklearn.metrics import confusion_matrix, roc_curve, auc
 
 # Local module imports
 import config as config
@@ -54,6 +57,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import label_binarize
 from itertools import cycle
+
 
 # Configurations
 results_path_ltn = config.results_path_ltn
@@ -162,11 +166,11 @@ for file in sorted(os.listdir(sequences_directory)):
             break
         
         base_name = file.replace("_train_scaled_sequences.npy", "")
-        if base_name in processed_bases:
-            continue
+        #if base_name in processed_bases:
+        #    continue
         
-        print(base_name)
-        if base_name in "PGB_20_0":
+        #if base_name in "PGB_20_0":
+        if base_name:
             processed_bases.add(base_name)
             counter+=1
             
@@ -206,10 +210,12 @@ for file in sorted(os.listdir(sequences_directory)):
                 y_train_fold, y_val_fold = y[train_idx], y[val_idx]
                 y_val_bin = tf.one_hot(y_val_fold, num_classes)
 
-                model = tf.keras.models.load_model('/home/ubuntu/dds_paper/DDS_Paper/model_weights/ltn_tf_model_PGB_20_0_fold_1.tf')
+                model = tf.keras.models.load_model(os.path.join(model_save_directory, f"ltn_tf_model_{base_name}_fold_{fold+1}.tf"))
 
-                normalized_average_importances = [0.8698482572624154, 0.007256010532360749, 0.007273512280350014, 0.02649895870976224, 0.0005917963938743085, 0.04350151355667389, 0.03996410776612958, 0.005065843498433776]
-                
+                importances_path = os.path.join(model_save_directory, f"normalized_importances_{base_name}_fold_{fold+1}.csv")
+                normalized_average_importances = np.loadtxt(importances_path, delimiter=',', skiprows=1)
+
+
                 X_val_fold_weighted = X_val_fold * np.array(normalized_average_importances)
                     
                 ds_val_fold = tf.data.Dataset.from_tensor_slices((X_val_fold_weighted, y_val_fold))
@@ -271,9 +277,39 @@ for file in sorted(os.listdir(sequences_directory)):
                 plt.legend(loc="lower right", fontsize='x-small', title="Classes", title_fontsize='small', frameon=False)
 
                 # Save the figure with a higher resolution
-                plt.savefig("plots/roc_curve" + str(fold+1) +".png", format='png', dpi=300, bbox_inches='tight')
+                plt.savefig("plots/roc_curve" + base_name + "_fold_" + str(fold+1) +".png", format='png', dpi=300, bbox_inches='tight')
                 plt.show()
 
+
+                # Initialize lists to collect all predictions and labels
+                all_predictions = []
+                all_labels = []
+
+                # Collect predictions and labels
+                for features, labels in ds_val_fold:
+                    logits = model(features)
+                    predicted_classes = tf.argmax(logits, axis=1)
+                    all_predictions.extend(predicted_classes.numpy())
+                    all_labels.extend(labels.numpy())
+
+                print("Distribution of all labels:", Counter(all_labels))
+                print("Distribution of all predictions:", Counter(all_predictions))
+                print("Sample labels:", all_labels[:10])
+                print("Sample predictions:", all_predictions[:10])
+
+                # Compute the confusion matrix
+                cm = confusion_matrix(all_labels, all_predictions, labels=range(num_classes))
+
+                # Plotting the confusion matrix
+                plt.figure(figsize=(10, 8))
+                sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+                plt.title(f'Confusion Matrix')
+                plt.xlabel('Predicted Label')
+                plt.ylabel('True Label')
+                plt.savefig(f"plots/confusion_matrix_{base_name}_fold_{fold+1}.png", format='png', dpi=300, bbox_inches='tight')
+                plt.show()
+    
+    
                 for features,labels in ds_val_fold:
                     predictions = model(features)
                     metrics_dict['test_accuracy'].update_state(tf.one_hot(labels, 9), predictions)

@@ -12,6 +12,8 @@ import random
 import re
 import sys
 import csv
+from collections import Counter
+
 
 
 # Append config directory to sys.path
@@ -254,6 +256,8 @@ def main():
                 fold_metrics = []
 
                 for fold, (train_idx, val_idx) in enumerate(kf.split(X, y)):
+                    print(f"Class distribution in train fold {fold+1}:", Counter(y[train_idx]))
+                    print(f"Class distribution in validation fold {fold+1}:", Counter(y[val_idx]))
                     metrics_logger = MetricsLogger(results_path, fold_number=fold+1, base_name=base_name)
                     console.print(f"[bold green]Training fold {fold + 1}/{n_splits} for {base_name}[/]")
                     X_train_fold, X_val_fold = X[train_idx], X[val_idx]
@@ -305,6 +309,13 @@ def main():
                     normalized_average_importances = normalize_importances(average_importances)
 
                     print("Normalized Average Feature Importances:", normalized_average_importances)
+                    importances_path = os.path.join(model_save_directory, f"normalized_importances_{base_name}_fold_{fold+1}.csv")
+
+                    # Save normalized average feature importances to a CSV file
+                    np.savetxt(importances_path, normalized_average_importances, delimiter=',', header='Feature Importances', comments='')
+
+                    # Inform the user where the importances have been saved
+                    print(f"Saved normalized feature importances to {importances_path}")
 
                     p = ltn.Predicate.FromLogits(model, activation_function="softmax", with_class_indexing=True)
                     
@@ -358,6 +369,12 @@ def main():
                         predictions = model([features])
                         metrics_dict['test_accuracy'](tf.one_hot(labels,9),predictions)
                     
+                    
+                    # Print overall class distribution before batching
+                    train_class_distribution = Counter(y_train_fold)
+                    val_class_distribution = Counter(y_val_fold)
+                    print(f"Training fold class distribution: {train_class_distribution}")
+                    print(f"Validation fold class distribution: {val_class_distribution}")
                     
                     X_train_fold_weighted = X_train_fold * np.array(normalized_average_importances)
                     X_val_fold_weighted = X_val_fold * np.array(normalized_average_importances)

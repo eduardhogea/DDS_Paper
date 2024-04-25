@@ -7,6 +7,8 @@ from tqdm import tqdm
 from util import extract_speed_from_filename
 from data_scaling import load_and_scale_data
 import joblib
+from collections import Counter
+
 
 def load_sequences(sequence_file_path, label_file_path):
     sequences = np.load(sequence_file_path)
@@ -48,6 +50,11 @@ def save_sequences(input_directory, output_directory, sequence_length):
         if file_name.endswith('.csv'):
             df = pd.read_csv(os.path.join(input_directory, file_name))
             sequences, labels = create_sequences(df, sequence_length)
+            
+            # Print distribution of sequences per class
+            label_counts = Counter(labels)
+            print(f"Distribution for {file_name}: {dict(label_counts)}")
+            
             
             # File names for sequences and labels
             base_name = os.path.splitext(file_name)[0]

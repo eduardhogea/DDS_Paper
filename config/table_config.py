@@ -24,7 +24,7 @@ results_path_ltn = os.path.join(BASE_DIR, 'results/')
 processed_file_tracker = os.path.join(BASE_DIR, 'progress', 'progress.txt')
 # Data Processing
 chunk_size = 100000  # Adjust the chunk size according to your memory limitations
-sequence_length = 10  # Define your desired sequence length
+sequence_length = 20  # Define your desired sequence length
 num_features = 8  # Based on the original number of features before sequencing
 processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
@@ -45,7 +45,7 @@ buffer_size = 200
 ltn_batch = 1024
 S = 1
 
-# lr * 0.3 for seq-10, lr * 0.7 for the rest
+# lr *0.3
 
 # Seed for reproducibility
 np.random.seed(42)
