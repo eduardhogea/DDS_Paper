@@ -24,7 +24,7 @@ results_path_ltn = os.path.join(BASE_DIR, 'results/')
 processed_file_tracker = os.path.join(BASE_DIR, 'progress', 'progress.txt')
 # Data Processing
 chunk_size = 100000  # Adjust the chunk size according to your memory limitations
-sequence_length = 10  # Define your desired sequence length
+sequence_length = 5  # Define your desired sequence length
 num_features = 8  # Based on the original number of features before sequencing
 processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
@@ -36,8 +36,8 @@ learning_rate = 0.001
 lr_ltn = 0.001
 n_splits = 2
 reg_value = 0.001
-num_train_samples = 5000
-num_test_samples = 1000
+num_train_samples = 500
+num_test_samples = 100
 reg_type = "l1"
 n_samples = num_train_samples - 1
 num_classes = 9
