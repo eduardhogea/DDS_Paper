@@ -36,11 +36,13 @@ from tensorflow.keras.layers import Dense, Dropout, LSTM, Input
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l2
+from tensorflow.keras.metrics import CategoricalAccuracy
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.losses import CategoricalCrossentropy, SparseCategoricalCrossentropy
 from tqdm import tqdm
 from numpy import mean
 import seaborn as sns
+
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 
 # Local module imports
@@ -87,7 +89,7 @@ num_train_samples = config.num_train_samples
 num_test_samples = config.num_test_samples
 reg_type = config.reg_type
 n_samples = config.n_samples
-num_classes = config.num_classes
+n_classes = config.num_classes
 buffer_size = config.buffer_size
 ltn_batch = config.ltn_batch
 results_path = config.results_path
@@ -116,6 +118,14 @@ SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
 tf.random.set_seed(SEED)
+
+# Set font sizes
+plt.rcParams['font.size'] = 14  # Adjust fontsize globally
+plt.rcParams['axes.labelsize'] = 16  # Adjust fontsize for X and Y labels
+plt.rcParams['axes.titlesize'] = 18  # Adjust fontsize for Titles
+plt.rcParams['xtick.labelsize'] = 14  # Adjust fontsize for X ticks
+plt.rcParams['ytick.labelsize'] = 14  # Adjust fontsize for Y ticks
+plt.rcParams['legend.fontsize'] = 14  # Adjust fontsize for legends
 
 # Colors cycle for plotting
 colors = cycle(['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'pink', 'lightblue'])
@@ -159,162 +169,106 @@ if os.path.exists(processed_file_tracker):
 
 metrics_summary = []
 
+all_probabilities = []  # This will store the probabilities for ROC curve
+all_predictions = []    # This will store the class indices for confusion matrix and accuracy
+all_labels = []
+
 for file in sorted(os.listdir(sequences_directory)):
     if "_train_scaled_sequences.npy" in file:
-        
-        if counter >= S:
-            break
+        #if counter >= S:
+        #    break
         
         base_name = file.replace("_train_scaled_sequences.npy", "")
-        #if base_name in processed_bases:
-        #    continue
+        if base_name in processed_bases:
+            continue
         
-        #if base_name in "PGB_20_0":
-        if base_name:
-            processed_bases.add(base_name)
-            counter+=1
-            
-            
+        processed_bases.add(base_name)
+        counter += 1
+        
+        # Load sequences and labels
+        train_sequence_file_path = os.path.join(sequences_directory, f"{base_name}_train_scaled_sequences.npy")
+        train_label_file_path = os.path.join(sequences_directory, f"{base_name}_train_scaled_labels.npy")
+        X_train, y_train = load_sequences(train_sequence_file_path, train_label_file_path)
+        
+        test_sequence_file_path = os.path.join(sequences_directory, f"{base_name}_test_scaled_sequences.npy")
+        test_label_file_path = os.path.join(sequences_directory, f"{base_name}_test_scaled_labels.npy")
+        X_test, y_test = load_sequences(test_sequence_file_path, test_label_file_path)
+
+        # Shuffle the sequences and corresponding labels
+        train_indices = np.arange(len(X_train))
+        np.random.shuffle(train_indices)
+        X_train = X_train[train_indices]
+        y_train = y_train[train_indices]
+
+        test_indices = np.arange(len(X_test))
+        np.random.shuffle(test_indices)
+        X_test = X_test[test_indices]
+        y_test = y_test[test_indices]
+
+        # Merge for cross-validation
+        X = np.concatenate((X_train, X_test), axis=0)
+        y = np.concatenate((y_train, y_test), axis=0)
+
+        #for fold, (train_idx, val_idx) in enumerate(kf.split(X, y)):
+
+        model = tf.keras.models.load_model(os.path.join(model_save_directory, f"ltn_tf_model_{base_name}_fold_{1}.tf"))
+
+        importances_path = os.path.join(model_save_directory, f"normalized_importances_{base_name}_fold_{1}.csv")
+        normalized_average_importances = np.loadtxt(importances_path, delimiter=',', skiprows=1)
+
+        X_test_fold_weighted = X_test * np.array(normalized_average_importances)
+        ds_test_fold = tf.data.Dataset.from_tensor_slices((X_test_fold_weighted, y_test))
+        ds_test_fold = ds_test_fold.batch(batch_size)
+
+        for features, label in ds_test_fold:
+            logits = model(features)
+            probabilities = tf.nn.softmax(logits).numpy()  # Get probabilities
+            predicted_classes = tf.argmax(logits, axis=1).numpy()  # Get predicted classes
+            all_probabilities.extend(probabilities)  # Store probabilities for ROC
+            all_predictions.extend(predicted_classes)  # Store predicted classes for confusion matrix
+            all_labels.extend(label.numpy())
                 
-                
-            # Load sequences and labels
-            train_sequence_file_path = os.path.join(sequences_directory, f"{base_name}_train_scaled_sequences.npy")
-            train_label_file_path = os.path.join(sequences_directory, f"{base_name}_train_scaled_labels.npy")
-            X_train, y_train = load_sequences(train_sequence_file_path, train_label_file_path)
-            
-            test_sequence_file_path = os.path.join(sequences_directory, f"{base_name}_test_scaled_sequences.npy")
-            test_label_file_path = os.path.join(sequences_directory, f"{base_name}_test_scaled_labels.npy")
-            X_test, y_test = load_sequences(test_sequence_file_path, test_label_file_path)
+all_probabilities = np.array(all_probabilities)
+all_predictions = np.array(all_predictions)
+all_labels = np.array(all_labels)
+#probabilities = tf.nn.softmax(all_predictions).numpy()
+# Binarize the labels for multiclass ROC
+all_labels_one_hot = label_binarize(all_labels, classes=range(n_classes))
 
-            # Shuffle the sequences and corresponding labels. Before this they were kept ordered.
-            train_indices = np.arange(len(X_train))
-            np.random.shuffle(train_indices)
-            X_train = X_train[train_indices]
-            y_train = y_train[train_indices]
+# Compute ROC curve and ROC area for each class
+fpr = dict()
+tpr = dict()
+roc_auc = dict()
+colors = plt.cm.viridis(np.linspace(0, 1, n_classes))
 
-            test_indices = np.arange(len(X_test))
-            np.random.shuffle(test_indices)
-            X_test = X_test[test_indices]
-            y_test = y_test[test_indices]
+plt.figure(figsize=(10, 8))
+for i, color in zip(range(n_classes), colors):
+    fpr[i], tpr[i], _ = roc_curve(all_labels_one_hot[:, i], all_probabilities[:, i])
+    roc_auc[i] = auc(fpr[i], tpr[i])
+    plt.plot(fpr[i], tpr[i], color=color, lw=2, label=f'Class {class_names[i]} (AUC = {roc_auc[i]:0.2f})')
 
-            # Merge for cross-validation
-            X = np.concatenate((X_train, X_test), axis=0)
-            y = np.concatenate((y_train, y_test), axis=0)
-
-            input_shape = (sequence_length, num_features)
-            fold_metrics = []
-
-            for fold, (train_idx, val_idx) in enumerate(kf.split(X, y)):
-                console.print(f"[bold green]Training fold {fold + 1}/{n_splits} for {base_name}[/]")
-                X_train_fold, X_val_fold = X[train_idx], X[val_idx]
-                y_train_fold, y_val_fold = y[train_idx], y[val_idx]
-                y_val_bin = tf.one_hot(y_val_fold, num_classes)
-
-                model = tf.keras.models.load_model(os.path.join(model_save_directory, f"ltn_tf_model_{base_name}_fold_{fold+1}.tf"))
-
-                importances_path = os.path.join(model_save_directory, f"normalized_importances_{base_name}_fold_{fold+1}.csv")
-                normalized_average_importances = np.loadtxt(importances_path, delimiter=',', skiprows=1)
+plt.plot([0, 1], [0, 1], 'k--', lw=2)
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Overall ROC Curve for All Speed Scenarios')
+plt.legend(loc="lower right")
+plt.savefig("plots/overall_roc.png", format='png', dpi=300, bbox_inches='tight')
+plt.show()
 
 
-                X_val_fold_weighted = X_val_fold * np.array(normalized_average_importances)
-                    
-                ds_val_fold = tf.data.Dataset.from_tensor_slices((X_val_fold_weighted, y_val_fold))
-                
-                ds_val_fold = ds_val_fold.batch(batch_size=batch_size)
+print("Distribution of all labels:", Counter(all_labels))
+print("Distribution of all predictions:", Counter(all_predictions))
+print("Sample labels:", all_labels[:10])
+print("Sample predictions:", all_predictions[:10])
 
-                # Initialize lists to hold predictions and labels
-                predictions = []
-                labels = []
-
-                # Collect all predictions and labels from the dataset
-                for features, label in ds_val_fold:
-                    logits = model(features)  # Assuming logits or probabilities from your model
-                    predictions.append(logits)
-                    labels.append(label)
-
-                # Convert lists to numpy arrays
-                predictions = np.concatenate(predictions, axis=0)
-                labels = np.concatenate(labels, axis=0)
-
-                # Binarize the labels for multiclass ROC
-                n_classes = 9  # Assuming 9 classes as you used tf.one_hot(labels, 9) earlier
-                labels_one_hot = label_binarize(labels, classes=range(n_classes))
-
-                # Compute ROC curve and ROC area for each class
-                fpr = dict()
-                tpr = dict()
-                roc_auc = dict()
-
-                # Plot all ROC curves
-                plt.figure(figsize=(10, 8))
-                plt.rc('font', family='serif', size=18)  # Increase the base font size
-
-                colors = plt.cm.viridis(np.linspace(0, 1, len(class_names)))
-
-                # Create a larger plot with fine-tuned control over its appearance
-                plt.figure(figsize=(8, 8))
-                plt.rc('font', family='serif')
-                plt.rc('xtick', labelsize='x-small')
-                plt.rc('ytick', labelsize='x-small')
-                plt.rc('axes', labelsize='small')
-
-                # Plot ROC curves
-                for i, color in zip(range(len(class_names)), colors):
-                    fpr[i], tpr[i], _ = roc_curve(labels_one_hot[:, i], predictions[:, i])
-                    roc_auc[i] = auc(fpr[i], tpr[i])
-                    plt.plot(fpr[i], tpr[i], color=color, lw=2, label='{0} (AUC = {1:0.2f})'.format(class_names[i], roc_auc[i]))
-
-                # Add the random chance line
-                plt.plot([0, 1], [0, 1], 'k--', lw=2, label='Chance (AUC = 0.50)')
-
-                # Customize the plot to be more suitable for publication
-                plt.xlim([0.0, 1.0])
-                plt.ylim([0.0, 1.05])
-                plt.xlabel('False Positive Rate')
-                plt.ylabel('True Positive Rate')
-                plt.title('ROC Curves for Gearbox Fault Classification')
-                plt.grid(True, linestyle='--', linewidth=0.5)
-                plt.legend(loc="lower right", fontsize='x-small', title="Classes", title_fontsize='small', frameon=False)
-
-                # Save the figure with a higher resolution
-                plt.savefig("plots/roc_curve" + base_name + "_fold_" + str(fold+1) +".png", format='png', dpi=300, bbox_inches='tight')
-                plt.show()
-
-
-                # Initialize lists to collect all predictions and labels
-                all_predictions = []
-                all_labels = []
-
-                # Collect predictions and labels
-                for features, labels in ds_val_fold:
-                    logits = model(features)
-                    predicted_classes = tf.argmax(logits, axis=1)
-                    all_predictions.extend(predicted_classes.numpy())
-                    all_labels.extend(labels.numpy())
-
-                print("Distribution of all labels:", Counter(all_labels))
-                print("Distribution of all predictions:", Counter(all_predictions))
-                print("Sample labels:", all_labels[:10])
-                print("Sample predictions:", all_predictions[:10])
-
-                # Compute the confusion matrix
-                cm = confusion_matrix(all_labels, all_predictions, labels=range(num_classes))
-
-                # Plotting the confusion matrix
-                plt.figure(figsize=(10, 8))
-                sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
-                plt.title(f'Confusion Matrix')
-                plt.xlabel('Predicted Label')
-                plt.ylabel('True Label')
-                plt.savefig(f"plots/confusion_matrix_{base_name}_fold_{fold+1}.png", format='png', dpi=300, bbox_inches='tight')
-                plt.show()
-    
-    
-                for features,labels in ds_val_fold:
-                    predictions = model(features)
-                    metrics_dict['test_accuracy'].update_state(tf.one_hot(labels, 9), predictions)
-                
-                accuracy = metrics_dict['test_accuracy'].result().numpy()
-                print("Test Accuracy:", accuracy)
-    
-#these metrics should be used
+# Confusion Matrix computation and visualization
+cm = confusion_matrix(all_labels, all_predictions, labels=range(n_classes))
+plt.figure(figsize=(10, 8))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+plt.title('Overall Confusion Matrix for All Speed Scenarios')
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.savefig("plots/overall_confusion_matrix.png", format='png', dpi=300, bbox_inches='tight')
+plt.show()
