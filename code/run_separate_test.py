@@ -283,8 +283,7 @@ def main():
                     y_test_pred_classes = model.predict(X_test, batch_size = batch_size)
                     y_test_pred_classes = np.argmax(y_test_pred_classes, axis=1)  # Get predicted classes
 
-                    # Since y_val_fold contains integer labels, there's no need for conversion
-                    y_test_true_classes = y_test  # Directly use the integer labels
+                    y_test_true_classes = y_test
 
                     # Calculate and store metrics for this fold
                     accuracy = accuracy_score(y_test_true_classes, y_test_pred_classes)
@@ -370,11 +369,12 @@ def main():
                         metrics_dict['test_accuracy'](tf.one_hot(labels,9),predictions)
                     
                     
+                    # optional debug:
                     # Print overall class distribution before batching
-                    train_class_distribution = Counter(y_train_fold)
-                    test_class_distribution = Counter(y_test)
-                    print(f"Training fold class distribution: {train_class_distribution}")
-                    print(f"Test class distribution: {test_class_distribution}")
+                    # train_class_distribution = Counter(y_train_fold)
+                    # test_class_distribution = Counter(y_test)
+                    # print(f"Training fold class distribution: {train_class_distribution}")
+                    # print(f"Test class distribution: {test_class_distribution}")
                     
                     X_train_fold_weighted = X_train_fold * np.array(normalized_average_importances)
                     X_test_weighted = X_test * np.array(normalized_average_importances)
@@ -427,11 +427,6 @@ def main():
                     console.print(f"Average Recall: {avg_recall:.4f}")
                     console.print(f"Average F1: {avg_f1:.4f}\n")
 
-
-
-                
-                # if counter>2:
-                #     break
             
         concatenate_and_delete_ltn_csv_files(results_path_ltn, "results/results_ltn.csv")
 
@@ -451,14 +446,6 @@ def main():
         with open(processed_file_tracker, "w") as file:
             for base in processed_bases:
                 file.write(base + "\n")
-        
-        
-
-        
-                
-        
-
-        
 
 def clean_directory(directory):
     # Remove all files in the directory, needed when creating new sequences
