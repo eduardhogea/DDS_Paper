@@ -115,7 +115,7 @@ S = config.S
 lr_ltn = config.lr_ltn
 processed_file_tracker = config.processed_file_tracker
 
-#!!
+#TODO needs to not use absolute path!! 
 model_save_directory = "/home/ubuntu/dds_paper/DDS_Paper/model_weights"
 
 
@@ -281,9 +281,8 @@ def main():
                     model.load_weights(model_filepath)
                     
                     y_val_pred_classes = model.predict(X_val_fold, batch_size = batch_size)
-                    y_val_pred_classes = np.argmax(y_val_pred_classes, axis=1)  # Get predicted classes
+                    y_val_pred_classes = np.argmax(y_val_pred_classes, axis=1)
 
-                    # Since y_val_fold contains integer labels, there's no need for conversion
                     y_val_true_classes = y_val_fold  # Directly use the integer labels
 
                     # Calculate and store metrics for this fold
@@ -311,10 +310,8 @@ def main():
                     print("Normalized Average Feature Importances:", normalized_average_importances)
                     importances_path = os.path.join(model_save_directory, f"normalized_importances_{base_name}_fold_{fold+1}.csv")
 
-                    # Save normalized average feature importances to a CSV file
+                    # Save normalized average feature importances
                     np.savetxt(importances_path, normalized_average_importances, delimiter=',', header='Feature Importances', comments='')
-
-                    # Inform the user where the importances have been saved
                     print(f"Saved normalized feature importances to {importances_path}")
 
                     p = ltn.Predicate.FromLogits(model, activation_function="softmax", with_class_indexing=True)
@@ -370,11 +367,12 @@ def main():
                         metrics_dict['test_accuracy'](tf.one_hot(labels,9),predictions)
                     
                     
+                    # optional for debug: 
                     # Print overall class distribution before batching
-                    train_class_distribution = Counter(y_train_fold)
-                    val_class_distribution = Counter(y_val_fold)
-                    print(f"Training fold class distribution: {train_class_distribution}")
-                    print(f"Validation fold class distribution: {val_class_distribution}")
+                    # train_class_distribution = Counter(y_train_fold)
+                    # val_class_distribution = Counter(y_val_fold)
+                    # print(f"Training fold class distribution: {train_class_distribution}")
+                    # print(f"Validation fold class distribution: {val_class_distribution}")
                     
                     X_train_fold_weighted = X_train_fold * np.array(normalized_average_importances)
                     X_val_fold_weighted = X_val_fold * np.array(normalized_average_importances)
@@ -426,12 +424,6 @@ def main():
                     console.print(f"Average Precision: {avg_precision:.4f}")
                     console.print(f"Average Recall: {avg_recall:.4f}")
                     console.print(f"Average F1: {avg_f1:.4f}\n")
-
-
-
-                
-                # if counter>2:
-                #     break
             
         concatenate_and_delete_ltn_csv_files(results_path_ltn, "results/results_ltn.csv")
 
@@ -451,13 +443,6 @@ def main():
         with open(processed_file_tracker, "w") as file:
             for base in processed_bases:
                 file.write(base + "\n")
-        
-        
-
-        
-                
-        
-
         
 
 def clean_directory(directory):
