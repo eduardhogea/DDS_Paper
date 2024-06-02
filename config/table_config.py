@@ -45,7 +45,5 @@ buffer_size = 200
 ltn_batch = 1024
 S = 1
 
-# lr *0.3
-
 # Seed for reproducibility
 np.random.seed(42)
