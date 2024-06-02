@@ -9,7 +9,7 @@ from tensorflow.keras import regularizers
 
 def lr_schedule(epoch, lr):
     if epoch % 10 == 0 and epoch > 0:
-        return lr * 0.1
+        return lr * 0.9
     return lr
 
 def create_model(input_shape, num_classes, reg_type='l2', reg_value=0.001, return_logits=False):

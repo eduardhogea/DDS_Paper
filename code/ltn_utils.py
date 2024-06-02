@@ -46,6 +46,9 @@ def test_step(features, labels):
     # sat
     sat = axioms(features, labels)
     metrics_dict['test_sat_kb'](sat)
+    metrics_dict['test_sat_phi1'](sat_phi1(features))
+    metrics_dict['test_sat_phi2'](sat_phi2(features))
+    metrics_dict['test_sat_phi3'](sat_phi3(features))
     # accuracy
     predictions = model([features])
     metrics_dict['test_accuracy'](tf.one_hot(labels,9),predictions)

@@ -249,19 +249,19 @@ def main():
                 y_test = y_test[test_indices]
 
                 # Merge for cross-validation
-                X = np.concatenate((X_train, X_test), axis=0)
-                y = np.concatenate((y_train, y_test), axis=0)
+                #X = np.concatenate((X_train, X_test), axis=0)
+                #y = np.concatenate((y_train, y_test), axis=0)
 
                 input_shape = (sequence_length, num_features)
                 fold_metrics = []
 
-                for fold, (train_idx, val_idx) in enumerate(kf.split(X, y)):
-                    print(f"Class distribution in train fold {fold+1}:", Counter(y[train_idx]))
-                    print(f"Class distribution in validation fold {fold+1}:", Counter(y[val_idx]))
+                for fold, (train_idx, val_idx) in enumerate(kf.split(X_train, y_train)):
+                    print(f"Class distribution in train fold {fold+1}:", Counter(y_train[train_idx]))
+                    print(f"Class distribution in validation fold {fold+1}:", Counter(y_train[val_idx]))
                     metrics_logger = MetricsLogger(results_path, fold_number=fold+1, base_name=base_name)
                     console.print(f"[bold green]Training fold {fold + 1}/{n_splits} for {base_name}[/]")
-                    X_train_fold, X_val_fold = X[train_idx], X[val_idx]
-                    y_train_fold, y_val_fold = y[train_idx], y[val_idx]
+                    X_train_fold, X_val_fold = X_train[train_idx], X_train[val_idx]
+                    y_train_fold, y_val_fold = y_train[train_idx], y_train[val_idx]
 
                     model = LSTMModel(input_shape=input_shape, num_classes=num_classes, reg_type=reg_type, reg_value=reg_value, return_logits=True)
                     
@@ -274,23 +274,23 @@ def main():
 
                     model_filepath = os.path.join(model_save_directory, f"model_{base_name}_fold_{fold+1}.h5")
                     checkpoint = ModelCheckpoint(filepath=model_filepath, save_best_only=True, monitor='val_accuracy', save_weights_only=True, mode='max')
-                    history = model.fit(X_train_fold, y_train_fold, validation_data=(X_val_fold, y_val_fold),
+                    history = model.fit(X_train_fold, y_train_fold, validation_data=(X_test, y_test),
                                         epochs=epochs, batch_size=batch_size, callbacks=[early_stopping, lr_scheduler, checkpoint, metrics_logger], verbose=1)
                     
                     
                     model.load_weights(model_filepath)
                     
-                    y_val_pred_classes = model.predict(X_val_fold, batch_size = batch_size)
-                    y_val_pred_classes = np.argmax(y_val_pred_classes, axis=1)  # Get predicted classes
+                    y_test_pred_classes = model.predict(X_test, batch_size = batch_size)
+                    y_test_pred_classes = np.argmax(y_test_pred_classes, axis=1)  # Get predicted classes
 
                     # Since y_val_fold contains integer labels, there's no need for conversion
-                    y_val_true_classes = y_val_fold  # Directly use the integer labels
+                    y_test_true_classes = y_test  # Directly use the integer labels
 
                     # Calculate and store metrics for this fold
-                    accuracy = accuracy_score(y_val_true_classes, y_val_pred_classes)
-                    precision = precision_score(y_val_true_classes, y_val_pred_classes, average='macro', zero_division=0)
-                    recall = recall_score(y_val_true_classes, y_val_pred_classes, average='macro', zero_division=0)
-                    f1 = f1_score(y_val_true_classes, y_val_pred_classes, average='macro')
+                    accuracy = accuracy_score(y_test_true_classes, y_test_pred_classes)
+                    precision = precision_score(y_test_true_classes, y_test_pred_classes, average='macro', zero_division=0)
+                    recall = recall_score(y_test_true_classes, y_test_pred_classes, average='macro', zero_division=0)
+                    f1 = f1_score(y_test_true_classes, y_test_pred_classes, average='macro')
                     fold_metrics.append((accuracy, precision, recall, f1))
                     
 
@@ -372,20 +372,20 @@ def main():
                     
                     # Print overall class distribution before batching
                     train_class_distribution = Counter(y_train_fold)
-                    val_class_distribution = Counter(y_val_fold)
+                    test_class_distribution = Counter(y_test)
                     print(f"Training fold class distribution: {train_class_distribution}")
-                    print(f"Validation fold class distribution: {val_class_distribution}")
+                    print(f"Test class distribution: {test_class_distribution}")
                     
                     X_train_fold_weighted = X_train_fold * np.array(normalized_average_importances)
-                    X_val_fold_weighted = X_val_fold * np.array(normalized_average_importances)
+                    X_test_weighted = X_test * np.array(normalized_average_importances)
                         
                     ds_train_fold = tf.data.Dataset.from_tensor_slices((X_train_fold_weighted, y_train_fold))
-                    ds_val_fold = tf.data.Dataset.from_tensor_slices((X_val_fold_weighted, y_val_fold))
+                    ds_test_fold = tf.data.Dataset.from_tensor_slices((X_test_weighted, y_test))
                     
                     ds_train_fold = ds_train_fold.batch(batch_size)
-                    ds_val_fold = ds_val_fold.batch(batch_size)
+                    ds_test_fold = ds_test_fold.batch(batch_size)
 
-                    for batch_features, batch_labels in ds_val_fold:
+                    for batch_features, batch_labels in ds_test_fold:
                         batch_satisfaction_level = axioms(batch_features, batch_labels, training=False)
                         print(f"Batch Satisfaction Level: {batch_satisfaction_level.numpy():.4f}")
                         break
@@ -397,7 +397,7 @@ def main():
                         epochs,
                         metrics_dict,
                         ds_train_fold,
-                        ds_val_fold,
+                        ds_test_fold,
                         train_step,
                         test_step,
                         csv_path=results_path_ltn_fold,

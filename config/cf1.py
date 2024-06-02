@@ -29,23 +29,21 @@ num_features = 8  # Based on the original number of features before sequencing
 processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
 # Model Training Parameters
-batch_size = 2048
-epochs = 100
-patience = 200
-learning_rate = 0.001
-lr_ltn = 0.001
-n_splits = 2
+batch_size = 256
+epochs = 50
+patience = 2
+learning_rate = 0.0005
+lr_ltn = 0.0001
+n_splits = 4
 reg_value = 0.001
-num_train_samples = 5000
-num_test_samples = 1000
+num_train_samples = 1200
+num_test_samples = 240
 reg_type = "l1"
-n_samples = num_train_samples - 1
+n_samples = 1000
 num_classes = 9
 buffer_size = 200
-ltn_batch = 1024
-S = 1
-
-# lr * 0.3 for seq-10, lr * 0.7 for the rest
+ltn_batch = 256
+S = 2
 
 # Seed for reproducibility
-np.random.seed(42)
+np.random.seed(45)
