@@ -3,12 +3,55 @@
 
 ![plot_highdef](https://github.com/eduardhogea/DDS_Paper/assets/72266259/5d4a702e-283d-4e88-8da0-ab22e0ed24f8)
 
+This repository contains the implementation of a hybrid neuro-symbolic model for time-series fault classification in industrial planetary gearboxes. The model integrates Long Short-Term Memory (LSTM) networks with Explainable AI (XAI) techniques and Logic Tensor Networks (LTN), enhancing both predictive accuracy and interpretability.
 
-This project integrates DDS Paper with LTN. It includes code for creating sequences and training models.
+## System Architecture
 
+The model architecture includes:
+- **LSTM Backbone**: Handles initial learning from time-series data to capture temporal dependencies critical for fault detection.
+- **XAI Component**: Focuses on permutation feature importance to refine the feature weighting.
+- **LTN Framework**: Embeds logical constraints derived from the data to further enhance the model by ensuring logical consistency and interpretability.
+
+## Key Features
+
+1. **Time-Series Data Handling**: The model is specifically designed to optimize the fault classification process for planetary gearboxes using simulated time-series data.
+2. **Feature Importance Reweighting**: Utilizes XAI techniques to adjust the weighting of each feature, amplifying the impact of important features and diminishing noise.
+3. **Logical Constraints**: LTN framework guides the LSTM model towards solutions that fit the data and adhere to predefined logical rules.
+4. **Explainability and Transparency**: Provides insights into the decision-making pathways of the AI model, crucial for deployments in critical environments.
+
+## Dataset
+
+The dataset used in this study is derived from a drivetrain dynamics simulator testbed, featuring various operational conditions for planetary gearboxes. The data includes multichannel vibration signals collected from different sensor channels under various load and speed conditions.
+
+## Implementation Details
+
+### Preprocessing
+
+- **Standardization**: Features are standardized to have zero mean and unit variance.
+- **Segmentation**: Data is segmented into training, validation, and test sets, with sequences created using a sliding window technique.
+- **Balancing**: The dataset is balanced across fault types and speeds.
+
+### Model Training
+
+1. **Train LSTM**:
+   - Initialize and train the LSTM model on the preprocessed data.
+   - Use cross-validation and various regularization techniques to optimize performance.
+
+2. **Feature Importance Assessment**:
+   - Apply permutation feature importance to evaluate the significance of each feature.
+   - Reweight features based on their importance scores.
+
+3. **Train LTN**:
+   - Integrate the trained LSTM with the LTN framework.
+   - Apply logical constraints and retrain the model to enhance logical consistency.
+
+### Evaluation
+
+- **Performance Metrics**: Accuracy, ROC-AUC, confusion matrix, and satisfiability metrics are used to evaluate the model.
+- **Comparative Analysis**: Compare the performance of the original LSTM model with the fine-tuned LTN model.
 ## Installation
 
-First, clone the repository and navigate to the project directory:
+To use this, first, clone the repository and navigate to the project directory:
 
 ```bash
 git clone https://github.com/yourusername/DDS_Paper.git
@@ -102,5 +145,14 @@ The configuration files for this project are located in the `config/` directory.
 - `README.md`: This file.
 
 
-## Results 
 
+## Results
+
+The hybrid neuro-symbolic model significantly outperforms the standard LSTM model, particularly in complex fault scenarios. The model demonstrates high accuracy and strong differentiation capabilities across various fault types.
+
+## Conclusion
+
+This study presents a robust approach for enhancing fault classification in industrial settings using a hybrid neuro-symbolic model. The integration of LSTM networks with XAI and LTN techniques provides a powerful tool for predictive maintenance, ensuring both high accuracy and interpretability.
+
+
+For detailed explanations and further readings, please refer to the full paper included in this repository.
