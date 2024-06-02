@@ -148,7 +148,7 @@ The configuration files for this project are located in the `config/` directory.
 
 ## Results
 
-The hybrid neuro-symbolic model significantly outperforms the standard LSTM model, particularly in complex fault scenarios. The model demonstrates high accuracy and strong differentiation capabilities across various fault types.
+The hybrid neuro-symbolic model significantly outperforms the standard LSTM model, particularly in complex fault scenarios. The model demonstrates high accuracy and strong differentiation capabilities across various fault types, with an increase of almost 15% when compared to its DL counterpart.
 
 ## Conclusion
 
