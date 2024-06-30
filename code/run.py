@@ -43,6 +43,7 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.losses import CategoricalCrossentropy, SparseCategoricalCrossentropy
 from tqdm import tqdm
 from numpy import mean
+import time
 
 # Local module imports
 import config as config
@@ -130,9 +131,21 @@ tf.random.set_seed(SEED)
 metrics_dict = {
     'train_sat_kb': tf.keras.metrics.Mean(name='train_sat_kb'),
     'test_sat_kb': tf.keras.metrics.Mean(name='test_sat_kb'),
-    'train_accuracy': tf.keras.metrics.CategoricalAccuracy(name="train_accuracy"),
-    'test_accuracy': tf.keras.metrics.CategoricalAccuracy(name="test_accuracy")
+    'train_accuracy': tf.keras.metrics.CategoricalAccuracy(name='train_accuracy'),
+    'test_accuracy': tf.keras.metrics.CategoricalAccuracy(name='test_accuracy'),
+    'test_sat_phi1': tf.keras.metrics.Mean(name='test_sat_phi1'),
+    'test_sat_phi2': tf.keras.metrics.Mean(name='test_sat_phi2'),
+    'test_sat_phi3': tf.keras.metrics.Mean(name='test_sat_phi3'),
+    'test_sat_phi4': tf.keras.metrics.Mean(name='test_sat_phi4'),
+    'test_sat_phi5': tf.keras.metrics.Mean(name='test_sat_phi5'),
+    'test_sat_phi6': tf.keras.metrics.Mean(name='test_sat_phi6'),
+    'test_sat_phi7': tf.keras.metrics.Mean(name='test_sat_phi7'),
+    'test_sat_phi8': tf.keras.metrics.Mean(name='test_sat_phi8')
 }
+
+
+
+
 
 Not = ltn.Wrapper_Connective(ltn.fuzzy_ops.Not_Std())
 And = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_Prod())
@@ -202,6 +215,7 @@ def main():
         save_sequences(csv_directory, sequences_directory, sequence_length)
     
     if args.train_model:
+        
         kf = KFold(n_splits=n_splits, shuffle=False)
         counter = 0
         console = Console()
@@ -318,7 +332,54 @@ def main():
                     print(f"Saved normalized feature importances to {importances_path}")
 
                     p = ltn.Predicate.FromLogits(model, activation_function="softmax", with_class_indexing=True)
-                    
+                    @tf.function
+                    def sat_phi1(features):
+                        x = ltn.Variable("x", features)
+                        phi1 = Forall(x, Implies(p([x, class_0]), Not(p([x, class_1]))), p=5)
+                        return phi1.tensor
+
+                    @tf.function
+                    def sat_phi2(features):
+                        x = ltn.Variable("x", features)
+                        phi2 = Forall(x, Implies(p([x, class_0]), Not(p([x, class_2]))), p=5)
+                        return phi2.tensor
+
+                    @tf.function
+                    def sat_phi3(features):
+                        x = ltn.Variable("x", features)
+                        phi3 = Forall(x, Implies(p([x, class_0]), Not(p([x, class_3]))), p=5)
+                        return phi3.tensor
+
+                    @tf.function
+                    def sat_phi4(features):
+                        x = ltn.Variable("x", features)
+                        phi4 = Forall(x, Implies(p([x, class_0]), Not(p([x, class_4]))), p=5)
+                        return phi4.tensor
+
+                    @tf.function
+                    def sat_phi5(features):
+                        x = ltn.Variable("x", features)
+                        phi5 = Forall(x, Implies(p([x, class_0]), Not(p([x, class_5]))), p=5)
+                        return phi5.tensor
+
+                    @tf.function
+                    def sat_phi6(features):
+                        x = ltn.Variable("x", features)
+                        phi6 = Forall(x, Implies(p([x, class_0]), Not(p([x, class_6]))), p=5)
+                        return phi6.tensor
+
+                    @tf.function
+                    def sat_phi7(features):
+                        x = ltn.Variable("x", features)
+                        phi7 = Forall(x, Implies(p([x, class_0]), Not(p([x, class_7]))), p=5)
+                        return phi7.tensor
+
+                    @tf.function
+                    def sat_phi8(features):
+                        x = ltn.Variable("x", features)
+                        phi8 = Forall(x, Implies(p([x, class_0]), Not(p([x, class_8]))), p=5)
+                        return phi8.tensor
+
                     @tf.function
                     def axioms(features, labels, training=False):
                         x_A = ltn.Variable("x_A", features[labels == 0])
@@ -362,12 +423,23 @@ def main():
                         
                     @tf.function
                     def test_step(features, labels):
-                        # sat
+                        # Satisfaction levels for knowledge base axioms
                         sat = axioms(features, labels)
                         metrics_dict['test_sat_kb'](sat)
-                        # accuracy
+
+                        # Satisfaction levels for individual phi queries
+                        metrics_dict['test_sat_phi1'](sat_phi1(features))
+                        metrics_dict['test_sat_phi2'](sat_phi2(features))
+                        metrics_dict['test_sat_phi3'](sat_phi3(features))
+                        metrics_dict['test_sat_phi4'](sat_phi4(features))
+                        metrics_dict['test_sat_phi5'](sat_phi5(features))
+                        metrics_dict['test_sat_phi6'](sat_phi6(features))
+                        metrics_dict['test_sat_phi7'](sat_phi7(features))
+                        metrics_dict['test_sat_phi8'](sat_phi8(features))
+
+                        # Accuracy
                         predictions = model([features])
-                        metrics_dict['test_accuracy'](tf.one_hot(labels,9),predictions)
+                        metrics_dict['test_accuracy'](tf.one_hot(labels, 9), predictions)
                     
                     
                     # Print overall class distribution before batching
@@ -393,6 +465,8 @@ def main():
 
                     
                     results_path_ltn_fold = results_path_ltn + base_name +"_fold" + str(fold+1) + '_ltn.csv'
+                    
+                    start_time = time.time()
                     commons.train(
                         epochs,
                         metrics_dict,
@@ -403,7 +477,11 @@ def main():
                         csv_path=results_path_ltn_fold,
                         track_metrics=1
                     )
-                    
+                    end_time = time.time()
+                    # Calculate the elapsed time
+                    elapsed_time = end_time - start_time
+                    print(f"Elapsed time: {elapsed_time} seconds")
+
                     model.save_weights(os.path.join(model_save_directory, f"ltn_model_{base_name}_fold_{fold+1}_weights.h5"))
                     model.save(os.path.join(model_save_directory, f"ltn_tf_model_{base_name}_fold_{fold+1}.tf"))
                     

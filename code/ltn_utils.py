@@ -43,15 +43,24 @@ def train_step(features, labels):
     
 @tf.function
 def test_step(features, labels):
-    # sat
+    # Satisfaction levels for knowledge base axioms
     sat = axioms(features, labels)
     metrics_dict['test_sat_kb'](sat)
+
+    # Satisfaction levels for individual phi queries
     metrics_dict['test_sat_phi1'](sat_phi1(features))
     metrics_dict['test_sat_phi2'](sat_phi2(features))
     metrics_dict['test_sat_phi3'](sat_phi3(features))
-    # accuracy
+    metrics_dict['test_sat_phi4'](sat_phi4(features))
+    metrics_dict['test_sat_phi5'](sat_phi5(features))
+    metrics_dict['test_sat_phi6'](sat_phi6(features))
+    metrics_dict['test_sat_phi7'](sat_phi7(features))
+    metrics_dict['test_sat_phi8'](sat_phi8(features))
+
+    # Accuracy
     predictions = model([features])
-    metrics_dict['test_accuracy'](tf.one_hot(labels,9),predictions)
+    metrics_dict['test_accuracy'](tf.one_hot(labels, 9), predictions)
+
 
 
 
