@@ -8,3 +8,5 @@ progress
 results
 model_weights/
 *.png
+.idea/
+_pucache_/
