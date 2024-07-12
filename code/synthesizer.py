@@ -25,6 +25,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from collections import Counter
+import pandas as pd
 
 # from parameter import parse_option
 # args = parse_option()
@@ -408,8 +409,8 @@ if __name__ == '__main__':
     for file in sorted(os.listdir(sequences_directory)):
 
         if "_train_scaled_sequences.npy" in file:
-            #if counter >= S:
-                #break
+            # if counter >= S:
+            #     break
             
             base_name = file.replace("_train_scaled_sequences.npy", "")
             if base_name in processed_bases:
