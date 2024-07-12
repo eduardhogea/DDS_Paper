@@ -78,131 +78,76 @@ S = config.S
 lr_ltn = config.lr_ltn
 processed_file_tracker = config.processed_file_tracker
 
-class FlattenLayer(nn.Module):
-    def __init__(self, num_features):
-        super().__init__()
-        self.num_features = num_features
-
-    def forward(self, x):
-        return x.view(-1, self.num_features)
-
 
 class Swish_act(nn.Module):
     def __init__(self):
         super(Swish_act, self).__init__()
 
-    # def forward(self, x):
-    #     x = x * F.sigmoid(x)
-    #     return x
-
     def forward(self, x):
-        x = x * torch.sigmoid(x)
+        x = x * F.sigmoid(x)
         return x
 
 
-class Conv1dRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, kernel_size, num_layers, bias, output_size, activation='tanh', num_class=10):
-        super(Conv1dRNN, self).__init__()
-
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-
-        self.kernel_size = kernel_size
-        self.padding = kernel_size // 2
-
-        self.num_layers = num_layers
-        self.bias = bias
-        self.output_size = output_size
-
-        self.rnn_cell_list = nn.ModuleList()
-
-        if activation == 'tanh':
-            self.rnn_cell_list.append(Conv1dRNNCell(self.input_size,
-                                                   self.hidden_size,
-                                                   self.kernel_size,
-                                                   self.bias,
-                                                   "tanh"))
-            for l in range(1, self.num_layers):
-                self.rnn_cell_list.append(Conv1dRNNCell(self.hidden_size,
-                                                       self.hidden_size,
-                                                       self.kernel_size,
-                                                       self.bias,
-                                                       "tanh"))
-
-        elif activation == 'relu':
-            self.rnn_cell_list.append(Conv1dRNNCell(self.input_size,
-                                                   self.hidden_size,
-                                                   self.kernel_size,
-                                                   self.bias,
-                                                   "relu"))
-            for l in range(1, self.num_layers):
-                self.rnn_cell_list.append(Conv1dRNNCell(self.hidden_size,
-                                                   self.hidden_size,
-                                                   self.kernel_size,
-                                                   self.bias,
-                                                   "relu"))
-        else:
-            raise ValueError("Invalid activation.")
-
-        self.conv = nn.Conv1d(in_channels=self.hidden_size,
-                             out_channels=self.output_size,
-                             kernel_size=self.kernel_size,
-                             padding=self.padding,
-                             bias=self.bias)
-
-        self.conv_classifier = nn.Sequential(
-            nn.Conv1d(in_channels=self.hidden_size,
-                      out_channels=self.output_size,
-                      kernel_size=self.kernel_size,
-                      padding=self.padding,
-                      bias=self.bias),
-            # nn.BatchNorm1d(self.output_size),
+class ResBlock(nn.Module):
+    def __init__(self, input_channel, output_channel, stride):
+        super(ResBlock, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv1d(input_channel, output_channel, kernel_size=3, stride=stride, padding=1),
+            nn.BatchNorm1d(output_channel),
             Swish_act(),
-            FlattenLayer(self.output_size),
-            nn.Linear(self.output_size, num_class)
+
+            nn.Conv1d(output_channel, output_channel, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm1d(output_channel)
         )
 
-    def forward(self, input, hx=None):
-        # Shape of input（batch size, channel number = feature len, sequence len）
-        #
-        # Output of shape (batch_size, output_size)
+        self.skip_connection = nn.Sequential()
+        if output_channel != input_channel:
+            self.skip_connection = nn.Sequential(
+                nn.Conv1d(input_channel, output_channel, kernel_size=1, stride=stride),
+                nn.BatchNorm1d(output_channel)
+            )
 
-        if hx is None:
-            if torch.cuda.is_available():
-                h0 = Variable(torch.zeros(self.num_layers, input.size(0), self.hidden_size, 1).cuda())
-            else:
-                h0 = Variable(torch.zeros(self.num_layers, input.size(0), self.hidden_size, 1))
+        self.Lrelu = Swish_act()
 
-        else:
-             h0 = hx
-
-        outs = []
-
-        hidden = list()
-        for layer in range(self.num_layers):
-            hidden.append(h0[layer])
-
-        for t in range(input.size(2)):
-
-            for layer in range(self.num_layers):
-
-                if layer == 0:
-                    hidden_l = self.rnn_cell_list[layer](input[:, :, t].unsqueeze(2), hidden[layer])
-                else:
-                    hidden_l = self.rnn_cell_list[layer](hidden[layer - 1], hidden[layer])
-                hidden[layer] = hidden_l
-
-                # hidden[layer] = hidden_l
-
-            outs.append(hidden_l)
-
-        # Take only last time step. Modify for seq to seq
-        out = outs[-1]
-        # print(out.shape)
-
-        out = self.conv_classifier(out)
-
+    def forward(self, x):
+        out = self.conv(x)
+        out = self.skip_connection(x) + out
+        out = self.Lrelu(out)
         return out
+
+
+class ResNet(nn.Module):
+    def __init__(self, input_channel=num_features, num_class=num_classes):    # batch_size, 33, 1000
+        super(ResNet, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv1d(input_channel, 64, kernel_size=7, stride=1, padding=3),  # 1, 64, 1000
+            nn.BatchNorm1d(64),
+            Swish_act(),
+            nn.MaxPool1d(kernel_size=3, stride=2, padding=1)  # batch, 64, 500
+        )
+
+        self.layer1 = ResBlock(64, 96, stride=1)  # batch, 96, 500
+        self.layer2 = ResBlock(96, 128, stride=2)  # batch, 128, 250
+        self.layer3 = ResBlock(128, 192, stride=2)  # batch, 192, 125
+        self.layer4 = ResBlock(192, 256, stride=2)  # batch, 256, 63
+        self.layer5 = ResBlock(256, 384, stride=2)  # batch, 384, 32
+
+        self.linear = nn.Sequential(
+            nn.Linear(384 * 32, 100),
+            nn.Dropout(),
+            nn.Linear(100, num_class)
+        )
+
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = self.layer5(out)
+        pred = self.linear(out.view(out.size(0), -1))
+        return pred
+
 
 def train_model(model, train_loader, criterion, optimizer, device):
     model.train()
@@ -333,7 +278,7 @@ if __name__ == '__main__':
                 console.print(f"Val Loader Batch Shape: {val_batch[0].shape}, Labels Shape: {val_batch[1].shape}")
 
                 
-                model = Conv1dRNN(input_size=num_features, hidden_size=50, kernel_size=1, num_layers=1, bias=True, output_size=100, num_class=num_classes)
+                model = ResNet(num_class=num_classes)
                 model.to(device)  # Move the model to the appropriate device
                 
                 criterion = nn.CrossEntropyLoss()
@@ -358,7 +303,7 @@ if __name__ == '__main__':
                 
     # Save metrics summary to CSV
     df_metrics_summary = pd.DataFrame(metrics_summary, columns=['Base Name', 'Avg Loss', 'Avg Accuracy'])
-    csv_path = os.path.join(results_path_ltn, 'RNN.csv')
+    csv_path = os.path.join(results_path_ltn, 'ResNet.csv')
     df_metrics_summary.to_csv(csv_path, index=False)
     
     console.print("[bold yellow]Summary of all base names and their metrics[/]")
