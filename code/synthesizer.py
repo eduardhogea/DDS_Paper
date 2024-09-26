@@ -299,7 +299,7 @@ class VisionTransformer(nn.Module):
     """
     Transformer for classification
     """
-    def __init__(self, input_channel=20, signal_size=1000, patch_size=10, num_class=12, hidden_size=256, depth=3,
+    def __init__(self, input_channel=20, signal_size=1000, patch_size=10, num_class=12, hidden_size=8, depth=3,
                  attention_choice="dot", num_heads=8, mlp_ratio=4., drop_rate=0.2, attn_drop_rate=0.2, drop_path_rate=0.2, classifier="gap"):
         super(VisionTransformer, self).__init__()
         self.num_class = num_class
@@ -467,7 +467,7 @@ if __name__ == '__main__':
                 criterion = nn.CrossEntropyLoss()
                 optimizer = optim.Adam(model.parameters(), lr=0.001)
                 
-                num_epochs = 40
+                num_epochs = 30
                 for epoch in range(num_epochs):
                     train_loss = train_model(model, train_loader, criterion, optimizer, device)
                     val_loss, val_accuracy = evaluate_model(model, val_loader, criterion, device)
@@ -486,7 +486,7 @@ if __name__ == '__main__':
                 
     # Save metrics summary to CSV
     df_metrics_summary = pd.DataFrame(metrics_summary, columns=['Base Name', 'Avg Loss', 'Avg Accuracy'])
-    csv_path = os.path.join(results_path_ltn, 'transformer.csv')
+    csv_path = os.path.join(results_path_ltn, 'transformer_2.csv')
     df_metrics_summary.to_csv(csv_path, index=False)
     
     console.print("[bold yellow]Summary of all base names and their metrics[/]")
