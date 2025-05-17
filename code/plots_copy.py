@@ -24,7 +24,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import tensorflow as tf
-tf.compat.v1.disable_v2_behavior()
 from rich.console import Console
 from rich.table import Table
 from sklearn.compose import ColumnTransformer
@@ -60,7 +59,6 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import label_binarize
 from itertools import cycle
-
 
 
 # Configurations
@@ -275,5 +273,3 @@ plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
 plt.savefig("plots/overall_confusion_matrix_uoc.png", format='png', dpi=300, bbox_inches='tight')
 plt.show()
-
-
