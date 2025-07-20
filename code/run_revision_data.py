@@ -164,7 +164,9 @@ def main():
     parser = argparse.ArgumentParser(description="Process data, create sequences, and train the model")
     parser.add_argument("--create-sequences", action="store_true", help="Create sequences from scaled CSV files")
     parser.add_argument("--train-model", action="store_true", help="Train the model using k-fold cross-validation")
+    parser.add_argument("--stride", type=int, help="Stride (step size) for sliding window between sequences")
     args = parser.parse_args()
+    stride = args.stride if args.stride is not None else sequence_length
     
     if args.create_sequences:
         # Clean the directories when creating new sequences
@@ -200,7 +202,7 @@ def main():
                     os.remove(csv_path)
                     
         # Create sequences
-        save_sequences(csv_directory, sequences_directory, sequence_length)
+        save_sequences(csv_directory, sequences_directory, sequence_length, stride=1000)
     
     if args.train_model:
         
