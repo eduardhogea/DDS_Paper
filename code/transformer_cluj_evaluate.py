@@ -13,6 +13,7 @@ import torch.optim as optim
 from rich.console import Console
 from sklearn.cluster import KMeans
 from sklearn.metrics import classification_report, precision_recall_fscore_support
+from sklearn.metrics.pairwise import cosine_similarity
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm, trange
 import ltn
@@ -21,7 +22,7 @@ from sequence_generation import load_sequences
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(script_dir, "..", "config"))
-
+np.random.seed(1)
 import config_uoc as config
 
 results_path_ltn = config.results_path_ltn
@@ -31,10 +32,27 @@ batch_size = config.batch_size
 epochs = config.epochs
 learning_rate = config.learning_rate
 num_classes = config.num_classes
-sequences_directory = "/home/ubuntu/dds_paper/DDS_Paper/data_uoc/output_sequences"
-model_save_directory = "/home/ubuntu/dds_paper/DDS_Paper/model_weights_cluj"
+merge_cosine_threshold = config.rule_merge_tau
+support_min = config.rule_support_min
+n_cluster = config.n_cluster
+
+sequences_directory = "data_uoc/output_sequences"
+model_save_directory = "model_weights_cluj"
 os.makedirs(model_save_directory, exist_ok=True)
 
+
+def get_device():
+    if torch.cuda.is_available():
+        name = torch.cuda.get_device_name(0)
+        cap  = ".".join(map(str, torch.cuda.get_device_capability(0)))
+        print(f"[CUDA] Using {name} (compute capability {cap})")
+        return torch.device("cuda")
+    else:
+        print("[CUDA] Not available. Falling back to CPU.")
+        return torch.device("cpu")
+
+
+#get_device()
 
 class Feed_Forward(nn.Module):
     def __init__(self, hidden_size: int, mlp_ratio: float, attn_drop_rate: float):
@@ -170,6 +188,7 @@ class VisionTransformer(nn.Module):
             logits = self.head(feats.flatten(start_dim=1))
         return logits, attn
 
+###
 
 class ClassPredicate(nn.Module):
     def __init__(self, base_model: VisionTransformer, class_idx: int):
@@ -201,11 +220,30 @@ def create_dataloaders(X_train, y_train, X_val, y_val):
     train_ds = TensorDataset(X_train, y_train)
     val_ds = TensorDataset(X_val, y_val)
     return (
-        DataLoader(train_ds, batch_size=batch_size, shuffle=True),
-        DataLoader(val_ds, batch_size=batch_size, shuffle=False),
+        DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=torch.cuda.is_available(), num_workers=2 if torch.cuda.is_available() else 0),
+        DataLoader(val_ds, batch_size=batch_size, shuffle=False, pin_memory=torch.cuda.is_available(), num_workers=2 if torch.cuda.is_available() else 0),
     )
 
 
+# def recompute_centroids(model, loader, device):
+#     embeddings = [[] for _ in range(num_classes)]
+#     with torch.no_grad():
+#         for x, y in loader:
+#             x = x.to(device, non_blocking=True)
+#             emb = model.embed(x).cpu().numpy()
+#             y_np = y.cpu().numpy()
+#             for cls in range(num_classes):
+#                 mask = (y_np == cls)
+#                 if mask.any():
+#                     embeddings[cls].append(emb[mask])
+#     centroids = {}
+#     for cls in range(num_classes):
+#         if embeddings[cls]:
+#             data = np.concatenate(embeddings[cls], axis=0)
+#             n_clusters = min(2, data.shape[0])
+#             kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10).fit(data)
+#             centroids[cls] = kmeans.cluster_centers_
+#     return centroids
 def recompute_centroids(model, loader, device):
     embeddings = [[] for _ in range(num_classes)]
     with torch.no_grad():
@@ -220,11 +258,31 @@ def recompute_centroids(model, loader, device):
     for cls in range(num_classes):
         if embeddings[cls]:
             data = np.concatenate(embeddings[cls], axis=0)
-            n_clusters = min(2, data.shape[0])
+            n_clusters = min(n_cluster, data.shape[0])
             kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10).fit(data)
-            centroids[cls] = kmeans.cluster_centers_
+            #centroids[cls] = kmeans.cluster_centers_
+            centers = kmeans.cluster_centers_
+            labels = kmeans.labels_
+            # prune by support_min
+            surviving = []
+            for idx, center in enumerate(centers):
+                if (labels == idx).sum() >= support_min:
+                    surviving.append(center)
+            # merge by cosine similarity
+            final_centroids = []
+            for c in surviving:
+                if final_centroids:
+                    sims = cosine_similarity([c], final_centroids)[0]
+                    if sims.max() <= merge_cosine_threshold:
+                        #print("------------!!!Check this:")
+                        final_centroids.append(c)
+                else:
+                    final_centroids.append(c)
+            centroids[cls] = np.vstack(final_centroids) if final_centroids else np.empty((0, centers.shape[1]))
     return centroids
 
+
+####
 
 def build_similarity_predicates(model, centroids):
     preds = [[] for _ in range(num_classes)]
@@ -256,7 +314,7 @@ def build_rules(x, y, predicates, sim_preds, Not, Forall, Implies):
 def compute_sat_level(loader, predicates, sim_preds, Not, Forall, Implies, SatAgg, device):
     total_sat = 0.0
     for x, y in loader:
-        x, y = x.to(device), y.to(device)
+        x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         rules = build_rules(x, y, predicates, sim_preds, Not, Forall, Implies)
         sat = SatAgg(*rules)
         total_sat += sat.item()
@@ -268,7 +326,7 @@ def compute_accuracy(loader, model, device):
     total = 0
     with torch.no_grad():
         for x, y in loader:
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             out, _ = model(x)
             preds = out.argmax(1)
             correct += (preds == y).sum().item()
@@ -278,6 +336,7 @@ def compute_accuracy(loader, model, device):
 
 def main():
     import matplotlib.pyplot as plt
+    get_device()
 
     console = Console()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -318,7 +377,10 @@ def main():
 
     # instantiate model, optimizer, predicates
     model     = VisionTransformer().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-3)
+    #optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    #scaler    = torch.cuda.amp.GradScaler()
+    scaler    = torch.cuda.amp.GradScaler() if device.type=="cuda" else None
     predicates = [ltn.Predicate(ClassPredicate(model, c)) for c in range(num_classes)]
     centroids  = recompute_centroids(model, emb_loader, device)
     sim_preds  = build_similarity_predicates(model, centroids)
@@ -334,15 +396,37 @@ def main():
     # training loop
     for epoch in trange(1, epochs+1, desc="Training"):
         model.train()
+        # running = 0.0
+        # for xb, yb in train_loader:
+        #     xb, yb = xb.to(device, non_blocking=True), yb.to(device, non_blocking=True)
+        #     optimizer.zero_grad()
+        #     rules = build_rules(xb, yb, predicates, sim_preds, Not, Forall, Implies)
+        #     sat   = SatAgg(*rules)
+        #     loss  = 1.0 - sat
+        #     loss.backward()
+        #     optimizer.step()
+        #     running += loss.item() * xb.size(0)
         running = 0.0
         for xb, yb in train_loader:
-            xb, yb = xb.to(device), yb.to(device)
+            xb, yb = xb.to(device, non_blocking=True), yb.to(device, non_blocking=True)
             optimizer.zero_grad()
-            rules = build_rules(xb, yb, predicates, sim_preds, Not, Forall, Implies)
-            sat   = SatAgg(*rules)
-            loss  = 1.0 - sat
-            loss.backward()
-            optimizer.step()
+
+            if scaler is not None:
+                with torch.cuda.amp.autocast():
+                    rules = build_rules(xb, yb, predicates, sim_preds, Not, Forall, Implies)
+                    sat   = SatAgg(*rules)
+                    loss  = 1.0 - sat
+
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                rules = build_rules(xb, yb, predicates, sim_preds, Not, Forall, Implies)
+                sat   = SatAgg(*rules)
+                loss  = 1.0 - sat
+                loss.backward()
+                optimizer.step()
+
             running += loss.item() * xb.size(0)
 
         train_sat = running / len(train_loader.dataset)
@@ -364,8 +448,12 @@ def main():
             torch.save(model.state_dict(), best_path)
             console.log(f"Saved best (acc={best_acc:.4f})")
 
+        # centroids = recompute_centroids(model, emb_loader, device)
+        # sim_preds  = build_similarity_predicates(model, centroids)
+            
+        #if epoch % 5 == 0: #TODO check this
         centroids = recompute_centroids(model, emb_loader, device)
-        sim_preds  = build_similarity_predicates(model, centroids)
+        sim_preds = build_similarity_predicates(model, centroids)
 
     # save per‐epoch metrics to CSV
     metrics_df = pd.DataFrame({
@@ -400,14 +488,18 @@ def main():
     model.load_state_dict(torch.load(best_path, map_location=device))
     model.eval()
     preds, labels = [], []
+
+
     with torch.no_grad():
         for xb, yb in val_loader:
-            logits, _ = model(xb.to(device))
+            logits, _ = model(xb.to(device, non_blocking=True))
             preds.extend(logits.argmax(1).cpu().numpy())
-            labels.extend(yb.numpy())
+            labels.extend(yb.cpu().numpy())
 
-    console.print(classification_report(labels, preds))
-    report_df = pd.DataFrame(classification_report(labels, preds, output_dict=True)).T
+    console.print(classification_report(labels, preds, digits=4))
+    report_df = pd.DataFrame(classification_report(labels, preds, output_dict=True, digits=4)).T
+
+    report_df = report_df.round(4)
     report_df.to_csv(os.path.join(results_path_ltn, "classification_report.csv"))
 
     console.print(f"Reports, metrics, and plots saved under:\n"
@@ -419,3 +511,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
