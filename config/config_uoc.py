@@ -29,9 +29,9 @@ num_features = 1  # Based on the original number of features before sequencing
 processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
 # Model Training Parameters
-batch_size = 150
-epochs = 500
-patience = 200
+batch_size = 2048
+epochs = 1500
+patience = 30
 learning_rate = 0.0001
 lr_ltn = 0.0001
 n_splits = 2
@@ -44,8 +44,14 @@ num_classes = 9
 buffer_size = 200
 ltn_batch = 150
 S = 1
+rule_support_min   = 10       # prune centroids with fewer than 10 members
+rule_merge_tau     = 0.80     # merge centroids with cosine similarity > 0.55
+n_cluster = 2
+use_ltn = True
+use_similarity = False
+
 
 # lr * 0.3 for seq-10, lr * 0.7 for the rest
 
 # Seed for reproducibility
-np.random.seed(42)
+#np.random.seed(42)

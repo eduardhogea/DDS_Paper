@@ -29,8 +29,8 @@ num_features = 1  # Based on the original number of features before sequencing
 processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
 # Model Training Parameters
-batch_size = 150
-epochs = 500
+batch_size = 1024
+epochs = 750
 patience = 200
 learning_rate = 0.001
 lr_ltn = 0.0001
