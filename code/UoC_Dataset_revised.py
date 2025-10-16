@@ -17,7 +17,7 @@ signal_types = ['healthy', 'missing', 'crack', 'spall',
 UoC_class_num = len(signal_types)
 
 data_len = 20        # Window size
-window_len = 1000     # Step size for sliding window
+window_len = 200      # Step size for sliding window
 START_index = [i * 104 for i in range(UoC_class_num)]
 labels = [i for i in range(UoC_class_num)]
 
