@@ -78,6 +78,12 @@ S = config.S
 lr_ltn = config.lr_ltn
 processed_file_tracker = config.processed_file_tracker
 
+sequences_directory = "data_uoc/output_sequences"
+model_save_directory = "model_weights_cluj"
+data_mode = getattr(config, "data_mode", "uoc")
+if data_mode == "dds":
+    sequences_directory = config.sequences_directory
+
 class FlattenLayer(nn.Module):
     def __init__(self, num_features):
         super().__init__()
@@ -276,6 +282,53 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     metrics_summary = []
+    if data_mode == "uoc":
+        train_sequence_file_path = os.path.join(sequences_directory, "train_sequences.npy")
+        train_label_file_path = os.path.join(sequences_directory, "train_labels.npy")
+        X_train, y_train = load_sequences(train_sequence_file_path, train_label_file_path)
+        test_sequence_file_path = os.path.join(sequences_directory, "test_sequences.npy")
+        test_label_file_path = os.path.join(sequences_directory, "test_labels.npy")
+        X_test, y_test = load_sequences(test_sequence_file_path, test_label_file_path)
+        train_indices = np.arange(len(X_train))
+        np.random.shuffle(train_indices)
+        X_train = X_train[train_indices]
+        y_train = y_train[train_indices]
+        test_indices = np.arange(len(X_test))
+        np.random.shuffle(test_indices)
+        X_test = X_test[test_indices]
+        y_test = y_test[test_indices]
+        X = np.concatenate((X_train, X_test), axis=0)
+        y = np.concatenate((y_train, y_test), axis=0)
+        input_shape = (sequence_length, num_features)
+        fold_metrics = []
+        base_name = "UoC"
+        for fold, (train_idx, val_idx) in enumerate(kf.split(X, y)):
+            print(f"Class distribution in train fold {fold+1}:", Counter(y[train_idx]))
+            print(f"Class distribution in validation fold {fold+1}:", Counter(y[val_idx]))
+            console.print(f"[bold green]Training fold {fold + 1}/{n_splits} for {base_name}[/]")
+            X_train_fold, X_val_fold = X[train_idx], X[val_idx]
+            y_train_fold, y_val_fold = y[train_idx], y[val_idx]
+            print(X_train_fold.shape)
+            print(y_train_fold)
+            train_loader, val_loader = create_dataloaders(X_train_fold, y_train_fold, X_val_fold, y_val_fold, batch_size)
+            train_batch = next(iter(train_loader))
+            val_batch = next(iter(val_loader))
+            console.print(f"Train Loader Batch Shape: {train_batch[0].shape}, Labels Shape: {train_batch[1].shape}")
+            console.print(f"Val Loader Batch Shape: {val_batch[0].shape}, Labels Shape: {val_batch[1].shape}")
+            model = Conv1dRNN(input_size=X_train_fold.shape[2], hidden_size=50, kernel_size=1, num_layers=1, bias=True, output_size=100, num_class=num_classes)
+            model.to(device)
+            criterion = nn.CrossEntropyLoss()
+            optimizer = optim.Adam(model.parameters(), lr=0.001)
+            num_epochs = 1000
+            for epoch in range(num_epochs):
+                train_loss = train_model(model, train_loader, criterion, optimizer, device)
+                val_loss, val_accuracy = evaluate_model(model, val_loader, criterion, device)
+                console.print(f"Fold {fold + 1} Epoch {epoch + 1}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
+            fold_metrics.append((val_loss, val_accuracy))
+        avg_loss = np.mean([metric[0] for metric in fold_metrics])
+        avg_accuracy = np.mean([metric[1] for metric in fold_metrics])
+        metrics_summary.append((base_name, avg_loss, avg_accuracy))
+        console.print(f"[bold blue]Finished training {base_name}: Avg Loss: {avg_loss:.4f}, Avg Accuracy: {avg_accuracy:.4f}[/]")
 
     for file in sorted(os.listdir(sequences_directory)):
 
@@ -333,13 +386,13 @@ if __name__ == '__main__':
                 console.print(f"Val Loader Batch Shape: {val_batch[0].shape}, Labels Shape: {val_batch[1].shape}")
 
                 
-                model = Conv1dRNN(input_size=num_features, hidden_size=50, kernel_size=1, num_layers=1, bias=True, output_size=100, num_class=num_classes)
+                model = Conv1dRNN(input_size=X_train_fold.shape[2], hidden_size=50, kernel_size=1, num_layers=1, bias=True, output_size=100, num_class=num_classes)
                 model.to(device)  # Move the model to the appropriate device
                 
                 criterion = nn.CrossEntropyLoss()
                 optimizer = optim.Adam(model.parameters(), lr=0.001)
                 
-                num_epochs = 40
+                num_epochs = 1000
                 for epoch in range(num_epochs):
                     train_loss = train_model(model, train_loader, criterion, optimizer, device)
                     val_loss, val_accuracy = evaluate_model(model, val_loader, criterion, device)
@@ -364,4 +417,3 @@ if __name__ == '__main__':
     console.print("[bold yellow]Summary of all base names and their metrics[/]")
     for base_name, avg_loss, avg_accuracy in metrics_summary:
         console.print(f"{base_name}: Avg Loss: {avg_loss:.4f}, Avg Accuracy: {avg_accuracy:.4f}")
-
