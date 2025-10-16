@@ -26,3 +26,7 @@ model_weights/*
 model_weights_revision/*
 model_weights_uoc/*
 old_model_weights/*
+/model_weights_cluj
+*.pt
+*.pdf
+/tmp
