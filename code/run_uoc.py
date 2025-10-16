@@ -118,7 +118,7 @@ processed_file_tracker = config.processed_file_tracker
 
 #!!
 model_save_directory = "/home/ubuntu/dds_paper/DDS_Paper/model_weights_uoc"
-
+sequences_directory = "data_uoc/output_sequences"
 
 # Setting seeds for reproducibility
 SEED = 42
@@ -274,7 +274,7 @@ def main():
             early_stopping = EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True)
 
             model_filepath = os.path.join(model_save_directory, f"model_fold_{fold+1}.h5")
-            checkpoint = ModelCheckpoint(filepath=model_filepath, save_best_only=True, monitor='val_accuracy', save_weights_only=True, mode='max')
+            checkpoint = ModelCheckpoint(filepath=model_filepath, save_best_only=True, monitor='val_accuracy', save_weights_only=False, mode='max')
             history = model.fit(X_train_fold, y_train_fold, validation_data=(X_val_fold, y_val_fold),
                                 epochs=epochs, batch_size=batch_size, callbacks=[early_stopping, lr_scheduler, checkpoint, metrics_logger], verbose=1)
             
