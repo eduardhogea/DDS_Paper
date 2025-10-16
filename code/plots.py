@@ -24,6 +24,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import tensorflow as tf
+tf.compat.v1.disable_v2_behavior()
 from rich.console import Console
 from rich.table import Table
 from sklearn.compose import ColumnTransformer
@@ -59,6 +60,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import label_binarize
 from itertools import cycle
+
 
 
 # Configurations
@@ -111,7 +113,7 @@ class_names = [
 
 
 #!!
-model_save_directory = "/home/ubuntu/dds_paper/DDS_Paper/model_weights"
+model_save_directory = "/home/ubuntu/dds_paper/DDS_Paper/old_model_weights"
 
 # Setting seeds for reproducibility
 SEED = 42
@@ -245,6 +247,7 @@ plt.figure(figsize=(10, 8))
 for i, color in zip(range(n_classes), colors):
     fpr[i], tpr[i], _ = roc_curve(all_labels_one_hot[:, i], all_probabilities[:, i])
     roc_auc[i] = auc(fpr[i], tpr[i])
+    print(roc_auc[i], f'Class {class_names[i]}')
     plt.plot(fpr[i], tpr[i], color=color, lw=2, label=f'Class {class_names[i]} (AUC = {roc_auc[i]:0.2f})')
 
 plt.plot([0, 1], [0, 1], 'k--', lw=2)
@@ -254,7 +257,7 @@ plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
 plt.title('Overall ROC Curve for All Speed Scenarios')
 plt.legend(loc="lower right")
-plt.savefig("plots/overall_roc.png", format='png', dpi=300, bbox_inches='tight')
+plt.savefig("plots/overall_roc_uoc.png", format='png', dpi=300, bbox_inches='tight')
 plt.show()
 
 
@@ -270,5 +273,7 @@ sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, ytic
 plt.title('Overall Confusion Matrix for All Speed Scenarios')
 plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
-plt.savefig("plots/overall_confusion_matrix.png", format='png', dpi=300, bbox_inches='tight')
+plt.savefig("plots/overall_confusion_matrix_uoc.png", format='png', dpi=300, bbox_inches='tight')
 plt.show()
+
+

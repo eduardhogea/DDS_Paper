@@ -8,7 +8,7 @@ from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras import regularizers
 
 def lr_schedule(epoch, lr):
-    if epoch % 10 == 0 and epoch > 0:
+    if epoch % 50 == 0 and epoch > 0:
         return lr * 0.9
     return lr
 
@@ -22,15 +22,15 @@ def create_model(input_shape, num_classes, reg_type='l2', reg_value=0.001, retur
 
     model = Sequential([
         Input(shape=input_shape),
-        LSTM(256, return_sequences=True, kernel_regularizer=regularizer),
+        LSTM(4098, return_sequences=True, kernel_regularizer=regularizer),
         Dropout(0.3),
-        LSTM(128, return_sequences=True, kernel_regularizer=regularizer),
+        LSTM(2056, return_sequences=True, kernel_regularizer=regularizer),
         Dropout(0.3),
-        LSTM(64, kernel_regularizer=regularizer),
+        LSTM(1024, kernel_regularizer=regularizer),
         Dropout(0.3),
-        Dense(128, activation='relu', kernel_regularizer=regularizer),
+        Dense(512, activation='relu', kernel_regularizer=regularizer),
         Dropout(0.3),
-        Dense(64, activation='relu', kernel_regularizer=regularizer),
+        Dense(256, activation='relu', kernel_regularizer=regularizer),
         Dropout(0.3)
     ])
     

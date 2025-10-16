@@ -24,13 +24,13 @@ results_path_ltn = os.path.join(BASE_DIR, 'results/')
 processed_file_tracker = os.path.join(BASE_DIR, 'progress', 'progress.txt')
 # Data Processing
 chunk_size = 100000  # Adjust the chunk size according to your memory limitations
-sequence_length = 20  # Define your desired sequence length
+sequence_length = 100  # Define your desired sequence length
 num_features = 8  # Based on the original number of features before sequencing
 processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
 # Model Training Parameters
-batch_size = 2048
-epochs = 100
+batch_size = 512
+epochs = 20
 patience = 200
 learning_rate = 0.001
 lr_ltn = 0.001
@@ -44,6 +44,15 @@ num_classes = 9
 buffer_size = 200
 ltn_batch = 1024
 S = 1
+
+rule_support_min   = 10       # prune centroids with fewer than 10 members
+rule_merge_tau     = 0.80     # merge centroids with cosine similarity > 0.55
+n_cluster = 2
+use_ltn = True
+use_similarity = True
+
+
+# lr * 0.3 for seq-10, lr * 0.7 for the rest
 
 # Seed for reproducibility
 np.random.seed(42)
