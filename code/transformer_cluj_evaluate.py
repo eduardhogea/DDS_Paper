@@ -13,9 +13,12 @@ import torch.optim as optim
 from rich.console import Console
 from sklearn.cluster import KMeans
 from sklearn.metrics import classification_report, precision_recall_fscore_support
+from sklearn.metrics.pairwise import cosine_similarity
 from torch.utils.data import DataLoader, TensorDataset
-from tqdm import tqdm, trange
+from tqdm import trange
 import ltn
+import random
+import math
 
 from sequence_generation import load_sequences
 
@@ -24,6 +27,16 @@ sys.path.append(os.path.join(script_dir, "..", "config"))
 
 import config_uoc as config
 
+# reproducibility: fixed random seed
+seed = getattr(config, 'random_seed', 0)
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(seed)
+
+
+# Core hyperparameters
 results_path_ltn = config.results_path_ltn
 sequence_length = config.sequence_length
 num_features = config.num_features
@@ -31,7 +44,12 @@ batch_size = config.batch_size
 epochs = config.epochs
 learning_rate = config.learning_rate
 num_classes = config.num_classes
-sequences_directory = "/home/ubuntu/dds_paper/DDS_Paper/data_uoc/output_sequences"
+
+# Online rule-generation parameters
+support_min           = config.rule_support_min        # minimum samples to keep a centroid
+merge_cosine_threshold = config.rule_merge_tau         # threshold to merge similar centroids
+
+sequences_directory  = "/home/ubuntu/dds_paper/DDS_Paper/data_uoc/output_sequences"
 model_save_directory = "/home/ubuntu/dds_paper/DDS_Paper/model_weights_cluj"
 os.makedirs(model_save_directory, exist_ok=True)
 
@@ -111,9 +129,10 @@ class Encoder_Block(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, depth: int, hidden_size: int, mlp_ratio: float, attn_drop_rate: float, num_heads: int, drop_rate: float):
         super().__init__()
-        self.blocks = nn.ModuleList(
-            [Encoder_Block(hidden_size, mlp_ratio, attn_drop_rate, num_heads, drop_rate) for _ in range(depth)]
-        )
+        self.blocks = nn.ModuleList([
+            Encoder_Block(hidden_size, mlp_ratio, attn_drop_rate, num_heads, drop_rate)
+            for _ in range(depth)
+        ])
         self.final_norm = nn.LayerNorm(hidden_size, eps=1e-6)
     def forward(self, x):
         attn_maps = []
@@ -146,16 +165,28 @@ class VisionTransformer(nn.Module):
         self.encoder = Encoder(depth, hidden_size, mlp_ratio, attn_drop_rate, num_heads, drop_rate)
         self.avg_pool = nn.AdaptiveAvgPool1d(4)
         self.max_pool = nn.AdaptiveMaxPool1d(4)
+        # self.head = nn.Sequential(
+        #     nn.Linear(hidden_size * 8, 256), nn.ReLU(), nn.Linear(256, num_class)
+        # )
+        
+        # head for gap-based classifier (512 → 256 → num_class)
         self.head = nn.Sequential(
             nn.Linear(hidden_size * 8, 256), nn.ReLU(), nn.Linear(256, num_class)
         )
+        # head for CLS-token classifier (64 → 256 → num_class)
+        # self.head_token = nn.Sequential(
+        #     nn.Linear(hidden_size, 256), nn.ReLU(), nn.Linear(256, num_class)
+        # )
+
     def embed(self, x):
         B = x.size(0)
         x = self.patch_embed(x).transpose(1, 2)
         cls_tok = self.cls_token.expand(B, -1, -1)
         x = torch.cat([cls_tok, x], dim=1)
+        #x = x + self.pos_embed
         x, _ = self.encoder(x)
         return x[:, 0]
+
     def forward(self, x):
         B = x.size(0)
         x = self.patch_embed(x).transpose(1, 2)
@@ -223,7 +254,26 @@ def recompute_centroids(model, loader, device):
             n_clusters = min(2, data.shape[0])
             kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10).fit(data)
             centroids[cls] = kmeans.cluster_centers_
+            # centers = kmeans.cluster_centers_
+            # labels = kmeans.labels_
+            # # prune by support_min
+            # surviving = []
+            # for idx, center in enumerate(centers):
+            #     if (labels == idx).sum() >= support_min:
+            #         surviving.append(center)
+            # # merge by cosine similarity
+            # final_centroids = []
+            # for c in surviving:
+            #     if final_centroids:
+            
+            #         sims = cosine_similarity([c], final_centroids)[0]
+            #         if sims.max() <= merge_cosine_threshold:
+            #             final_centroids.append(c)
+            #     else:
+            #         final_centroids.append(c)
+            # centroids[cls] = np.vstack(final_centroids) if final_centroids else np.empty((0, centers.shape[1]))
     return centroids
+
 
 
 def build_similarity_predicates(model, centroids):
@@ -318,7 +368,7 @@ def main():
 
     # instantiate model, optimizer, predicates
     model     = VisionTransformer().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     predicates = [ltn.Predicate(ClassPredicate(model, c)) for c in range(num_classes)]
     centroids  = recompute_centroids(model, emb_loader, device)
     sim_preds  = build_similarity_predicates(model, centroids)
@@ -367,7 +417,7 @@ def main():
         centroids = recompute_centroids(model, emb_loader, device)
         sim_preds  = build_similarity_predicates(model, centroids)
 
-    # save per‐epoch metrics to CSV
+    # save per-epoch metrics to CSV
     metrics_df = pd.DataFrame({
         'epoch':       epochs_list,
         'train_sat':   train_sat_list,

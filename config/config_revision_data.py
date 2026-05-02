@@ -23,14 +23,14 @@ results_path_ltn = os.path.join(BASE_DIR, 'results_kaggle/')
 processed_file_tracker = os.path.join(BASE_DIR, 'progress_revision', 'progress.txt')
 # Data Processing
 chunk_size = 100000  # Adjust the chunk size according to your memory limitations
-sequence_length = 10  # Define your desired sequence length
+sequence_length = 20  # Define your desired sequence length
 num_features = 4  # Based on the original number of features before sequencing
 processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
 # Model Training Parameters
 batch_size = 4000
-epochs = 25
-patience = 200
+epochs = 1000
+patience = 100
 learning_rate = 0.0001
 lr_ltn = 0.0001
 n_splits = 2

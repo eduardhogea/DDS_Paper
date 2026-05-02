@@ -19,19 +19,20 @@ data_root_folder = PGB_path
 sequences_directory = os.path.join(csv_directory, 'output_sequences')
 model_save_directory = os.path.join(dataset_path, 'models_uoc')
 model_path = os.path.join(model_save_directory, 'model_uoc.h5')
-results_path = os.path.join(BASE_DIR, 'results_uoc', 'results.csv')
-results_path_ltn = os.path.join(BASE_DIR, 'results_uoc/')
+results_path = os.path.join(BASE_DIR, 'results_uoc_cluj', 'results.csv')
+results_path_ltn = os.path.join(BASE_DIR, 'results_uoc_cluj/')
 processed_file_tracker = os.path.join(BASE_DIR, 'progress_uoc', 'progress.txt')
 # Data Processing
 chunk_size = 100000  # Adjust the chunk size according to your memory limitations
 sequence_length = 20  # Define your desired sequence length
-num_features = 1  # Based on the original number of features before sequencing
+#num_features = 1  # Based on the original number of features before sequencing
+num_features = 1
 processed_bases = set()  # Prepare a list of base names to avoid redundancy
 
 # Model Training Parameters
-batch_size = 150
-epochs = 500
-patience = 200
+batch_size = 512
+epochs = 750
+patience = 30
 learning_rate = 0.0001
 lr_ltn = 0.0001
 n_splits = 2
@@ -44,8 +45,10 @@ num_classes = 9
 buffer_size = 200
 ltn_batch = 150
 S = 1
+rule_support_min = 50
+rule_merge_tau = 0.95
 
 # lr * 0.3 for seq-10, lr * 0.7 for the rest
 
 # Seed for reproducibility
-np.random.seed(42)
+random_seed = 42
