@@ -44,6 +44,7 @@ num_classes = 9
 buffer_size = 200
 ltn_batch = 1024
 S = 1
+bases_limit = None  # Optional: limit how many bases are processed (None means all)
 
 rule_support_min   = 10       # prune centroids with fewer than 10 members
 rule_merge_tau     = 0.80     # merge centroids with cosine similarity > 0.55

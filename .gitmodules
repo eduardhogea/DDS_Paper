@@ -1,0 +1,3 @@
+[submodule "external/EWSNet"]
+	path = external/EWSNet
+	url = https://github.com/liguge/EWSNet.git

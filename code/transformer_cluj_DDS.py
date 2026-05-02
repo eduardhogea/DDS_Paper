@@ -18,6 +18,7 @@ from sklearn.model_selection import KFold
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import trange
 import ltn
+import multiprocessing as mp
 
 # ---------------------------------------------------------------------
 # Config & seeding
@@ -38,23 +39,30 @@ torch.backends.cudnn.benchmark = False
 console = Console()
 
 # Project config
-results_root          = config.results_path_ltn
-sequence_length       = config.sequence_length
-batch_size            = config.batch_size
-epochs                = config.epochs
-learning_rate         = config.learning_rate
-num_classes           = config.num_classes
-merge_cosine_threshold= config.rule_merge_tau
-support_min           = config.rule_support_min
-n_cluster             = config.n_cluster
-patience              = config.patience
-n_splits              = getattr(config, "n_splits", 2)
+results_root           = config.results_path_ltn
+sequence_length        = config.sequence_length
+batch_size             = config.batch_size
+epochs                 = config.epochs
+learning_rate          = config.learning_rate
+num_classes            = config.num_classes
+merge_cosine_threshold = config.rule_merge_tau
+support_min            = config.rule_support_min
+n_cluster              = config.n_cluster
+patience               = config.patience
+n_splits               = getattr(config, "n_splits", 2)
+bases_limit            = getattr(config, "bases_limit", None)
 
-#sequences_directory   = "data/DDS_Data_SEU/PGB/PGB"
-sequences_directory = config.sequences_directory
+sequences_directory    = config.sequences_directory
 
-model_save_directory  = "model_weights_cluj"
+model_save_directory   = "model_weights_cluj"
 os.makedirs(model_save_directory, exist_ok=True)
+
+# ================= DRIFT EXPERIMENT ADDITIONS =================
+# Number of epochs per stage in the sequential drift experiment.
+# Defaults to the same value as 'epochs' if not set in config.
+drift_epochs_per_stage = getattr(config, "drift_epochs_per_stage", epochs)
+RUN_DRIFT_EXPERIMENT   = True
+# ===============================================================
 
 from sequence_generation import load_sequences  # noqa: E402
 
@@ -236,6 +244,17 @@ class SimilarityPredicate(nn.Module):
         return torch.exp(-0.5 * dist)
 
 
+def _suggest_num_workers(default: int = 0) -> int:
+    """Heuristic: use a few CPU workers to speed data loading without changing training semantics."""
+    try:
+        cores = mp.cpu_count()
+    except NotImplementedError:
+        return default
+    if cores is None or cores <= 2:
+        return default
+    return min(8, cores)  # cap to avoid oversubscribing
+
+
 def create_dataloaders(X_train, y_train, X_val, y_val, seed=SEED):
     g = torch.Generator()
     g.manual_seed(seed)
@@ -249,11 +268,16 @@ def create_dataloaders(X_train, y_train, X_val, y_val, seed=SEED):
     val_ds   = TensorDataset(X_val,   y_val)
 
     pin = torch.cuda.is_available()
+    workers = _suggest_num_workers()
     train_loader = DataLoader(
         train_ds, batch_size=batch_size, shuffle=True,
-        generator=g, worker_init_fn=seed_worker, pin_memory=pin, num_workers=0
+        generator=g, worker_init_fn=seed_worker, pin_memory=pin,
+        num_workers=workers, persistent_workers=workers > 0
     )
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, pin_memory=pin, num_workers=0)
+    val_loader = DataLoader(
+        val_ds, batch_size=batch_size, shuffle=False, pin_memory=pin,
+        num_workers=workers, persistent_workers=workers > 0
+    )
     return train_loader, val_loader
 
 
@@ -407,6 +431,307 @@ def load_base(root: str, base: str, use_scaled: bool):
     return X_tr, y_tr, X_te, y_te
 
 
+# ================= DRIFT EXPERIMENT ADDITIONS =================
+def run_drift_experiment(bases, device, Not, Forall, Implies, SatAgg):
+    """
+    Sequential drift experiment:
+    - One single model.
+    - Stages: sequentially add bases in sorted order.
+    - At each stage, train on the new base only, but recompute centroids on the
+      union of all seen bases so far.
+    - Logs per-epoch rule counts and per-stage test accuracy on all seen bases.
+    """
+    if len(bases) < 2:
+        console.rule("[magenta]Sequential drift experiment[/]")
+        console.print("[yellow]Need at least 2 bases for drift; skipping.[/]")
+        return
+
+    console.rule("[magenta]Sequential drift experiment across bases[/]")
+
+    drift_out_dir = os.path.join(results_root, "drift_experiment")
+    os.makedirs(drift_out_dir, exist_ok=True)
+
+    # fixed order of bases defines the drift path
+    bases_sorted = sorted(bases, key=lambda x: x[0])
+
+    # load data for all bases
+    base_data = {}
+    for base, use_scaled in bases_sorted:
+        X_train, y_train, X_test, y_test = load_base(sequences_directory, base, use_scaled)
+        base_data[base] = {
+            "use_scaled": use_scaled,
+            "X_train_full": X_train,
+            "y_train_full": y_train,
+            "X_test": X_test,
+            "y_test": y_test,
+        }
+        console.print(
+            f"Drift data loaded for base [bold]{base}[/] "
+            f"(scaled={use_scaled}) → X_train {X_train.shape}, X_test {X_test.shape}"
+        )
+
+    # assume same temporal length & feature dimension across bases
+    first_base = bases_sorted[0][0]
+    X0 = base_data[first_base]["X_train_full"]
+    assert X0.ndim == 3, f"Expected (N, T, F), got {X0.shape}"
+    T0, Fdim = X0.shape[1], X0.shape[2]
+    assert T0 >= 10, "sequence_length must be >= 10 (patch_size) for Conv1d"
+
+    # single model + optimizer + scaler
+    model = VisionTransformer(input_channel=Fdim).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    scaler = torch.cuda.amp.GradScaler() if device.type == "cuda" else None
+
+    # LTN predicates (classification predicates are fixed; similarity predicates will be rebuilt)
+    predicates = [ltn.Predicate(ClassPredicate(model, c)) for c in range(num_classes)]
+    sim_preds = [[] for _ in range(num_classes)]
+
+    # helper: train/val split for each base
+    def make_train_val(X, y, val_ratio=0.2):
+        n = X.shape[0]
+        n_val = max(1, int(val_ratio * n))
+        rng = np.random.RandomState(SEED)
+        idx = np.arange(n)
+        rng.shuffle(idx)
+        val_idx = idx[:n_val]
+        tr_idx = idx[n_val:]
+        return X[tr_idx], y[tr_idx], X[val_idx], y[val_idx]
+
+    # logs
+    drift_metrics_rows = []        # per-epoch metrics
+    stage_perf_rows = []           # per-stage test accuracy on each seen base
+    stage_rule_stats_rows = []     # per-stage rule stats
+    global_epoch = 0
+    seen_bases = []
+
+    # generator for emb_loader (deterministic)
+    g = torch.Generator()
+    g.manual_seed(SEED)
+    loader_workers = _suggest_num_workers()
+
+    import matplotlib.pyplot as plt  # local import is fine
+
+    for stage_idx, (base, use_scaled) in enumerate(bases_sorted, start=1):
+        console.rule(f"[magenta]Drift stage {stage_idx}: add base {base} (scaled={use_scaled})[/]")
+
+        # train/val split for this base (once)
+        if "X_train" not in base_data[base]:
+            X_train_full = base_data[base]["X_train_full"]
+            y_train_full = base_data[base]["y_train_full"]
+            X_tr, y_tr, X_val, y_val = make_train_val(X_train_full, y_train_full, val_ratio=0.2)
+            base_data[base]["X_train"] = X_tr
+            base_data[base]["y_train"] = y_tr
+            base_data[base]["X_val"] = X_val
+            base_data[base]["y_val"] = y_val
+        else:
+            X_tr = base_data[base]["X_train"]
+            y_tr = base_data[base]["y_train"]
+            X_val = base_data[base]["X_val"]
+            y_val = base_data[base]["y_val"]
+
+        seen_bases.append(base)
+
+        console.print(
+            f"  Stage {stage_idx}: train on base {base} → "
+            f"X_train {X_tr.shape}, X_val {X_val.shape}; "
+            f"seen_bases={seen_bases}"
+        )
+
+        # DataLoaders for current base
+        train_loader, val_loader = create_dataloaders(X_tr, y_tr, X_val, y_val)
+
+        # Embedding loader built on union of train splits for all seen bases
+        X_seen_list, y_seen_list = [], []
+        for b_seen in seen_bases:
+            X_seen_list.append(base_data[b_seen]["X_train"])
+            y_seen_list.append(base_data[b_seen]["y_train"])
+        X_seen = np.concatenate(X_seen_list, axis=0)
+        y_seen = np.concatenate(y_seen_list, axis=0)
+
+        emb_loader = DataLoader(
+            TensorDataset(
+                torch.tensor(X_seen, dtype=torch.float32).permute(0, 2, 1),
+                torch.tensor(y_seen, dtype=torch.long),
+            ),
+            batch_size=batch_size,
+            shuffle=False,
+            generator=g,
+            worker_init_fn=seed_worker,
+            num_workers=loader_workers,
+            persistent_workers=loader_workers > 0,
+        )
+
+        # per-stage rule counts
+        stage_rule_counts = []
+
+        # train for a fixed number of epochs in this stage
+        for local_epoch in range(1, drift_epochs_per_stage + 1):
+            model.train()
+            running_loss = 0.0
+
+            for xb, yb in train_loader:
+                xb = xb.to(device, non_blocking=True)
+                yb = yb.to(device, non_blocking=True)
+                optimizer.zero_grad(set_to_none=True)
+
+                if scaler is not None:
+                    with torch.cuda.amp.autocast():
+                        rules_batch = build_rules(xb, yb, predicates, sim_preds, Not, Forall, Implies)
+                        sat = SatAgg(*rules_batch)
+                        loss = 1.0 - sat
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    rules_batch = build_rules(xb, yb, predicates, sim_preds, Not, Forall, Implies)
+                    sat = SatAgg(*rules_batch)
+                    loss = 1.0 - sat
+                    loss.backward()
+                    optimizer.step()
+
+                running_loss += loss.item() * xb.size(0)
+
+            train_loss = running_loss / len(train_loader.dataset)
+            train_sat = 1.0 - train_loss
+
+            # validation on current base
+            model.eval()
+            val_sat = compute_sat_level(val_loader, predicates, sim_preds, Not, Forall, Implies, SatAgg, device)
+            val_acc = compute_accuracy(val_loader, model, device)
+            val_loss = 1.0 - val_sat
+
+            # recompute centroids & similarity predicates using all seen bases
+            centroids = recompute_centroids(model, emb_loader, device)
+            sim_preds = build_similarity_predicates(model, centroids)
+            num_sim_rules = sum(len(lst) for lst in sim_preds)
+            stage_rule_counts.append(num_sim_rules)
+
+            global_epoch += 1
+
+            console.print(
+                f"[magenta]Stage {stage_idx} / Base {base}[/] "
+                f"Epoch {local_epoch:02d} (global {global_epoch:03d}) • "
+                f"train_sat={train_sat:.4f} • val_sat={val_sat:.4f} • "
+                f"val_acc={val_acc:.4f} • num_rules={num_sim_rules}"
+            )
+
+            drift_metrics_rows.append(
+                {
+                    "stage": stage_idx,
+                    "base": base,
+                    "global_epoch": global_epoch,
+                    "local_epoch": local_epoch,
+                    "train_sat": train_sat,
+                    "val_sat": val_sat,
+                    "val_acc": val_acc,
+                    "train_loss": train_loss,
+                    "val_loss": val_loss,
+                    "num_similarity_rules": num_sim_rules,
+                }
+            )
+
+        # per-stage rule statistics
+        num_epochs_stage = len(stage_rule_counts)
+        max_rules = int(max(stage_rule_counts))
+        min_rules = int(min(stage_rule_counts))
+        final_rules = int(stage_rule_counts[-1])
+        mean_rules = float(np.mean(stage_rule_counts))
+        std_rules = float(np.std(stage_rule_counts))
+        k = max(1, int(0.2 * num_epochs_stage))
+        stable_segment = stage_rule_counts[-k:]
+        stable_mean_rules = float(np.mean(stable_segment))
+        stable_std_rules = float(np.std(stable_segment))
+
+        stage_rule_stats_rows.append(
+            {
+                "stage": stage_idx,
+                "added_base": base,
+                "epochs_trained_this_stage": num_epochs_stage,
+                "max_num_rules": max_rules,
+                "min_num_rules": min_rules,
+                "final_num_rules": final_rules,
+                "mean_num_rules": mean_rules,
+                "std_num_rules": std_rules,
+                "mean_num_rules_last_20pct": stable_mean_rules,
+                "std_num_rules_last_20pct": stable_std_rules,
+            }
+        )
+
+        console.print(
+            f"[bold]Drift stage {stage_idx} summary[/] "
+            f"final_rules={final_rules}  stable_mean_rules={stable_mean_rules:.1f}"
+        )
+
+        # test accuracy on all seen bases so far
+        for test_base in seen_bases:
+            X_te = base_data[test_base]["X_test"]
+            y_te = base_data[test_base]["y_test"]
+            test_loader = DataLoader(
+                TensorDataset(
+                    torch.tensor(X_te, dtype=torch.float32).permute(0, 2, 1),
+                    torch.tensor(y_te, dtype=torch.long),
+                ),
+                batch_size=batch_size,
+                shuffle=False,
+                num_workers=loader_workers,
+                persistent_workers=loader_workers > 0,
+            )
+            test_acc = compute_accuracy(test_loader, model, device)
+            stage_perf_rows.append(
+                {
+                    "stage": stage_idx,
+                    "train_bases_seen": "+".join(seen_bases),
+                    "test_base": test_base,
+                    "test_accuracy": test_acc,
+                }
+            )
+            console.print(
+                f"  Test accuracy after stage {stage_idx} on base {test_base}: {test_acc:.4f}"
+            )
+
+    # save logs
+    drift_metrics_df = pd.DataFrame(drift_metrics_rows)
+    drift_metrics_df.to_csv(os.path.join(drift_out_dir, "drift_metrics.csv"), index=False)
+
+    stage_perf_df = pd.DataFrame(stage_perf_rows)
+    stage_perf_df.to_csv(os.path.join(drift_out_dir, "drift_stage_performance.csv"), index=False)
+
+    stage_rule_stats_df = pd.DataFrame(stage_rule_stats_rows)
+    stage_rule_stats_df.to_csv(os.path.join(drift_out_dir, "drift_stage_rule_stats.csv"), index=False)
+
+    # plot: number of rules vs global epoch, colored by stage
+    plt.figure()
+    for stage_idx in sorted(drift_metrics_df["stage"].unique()):
+        df_stage = drift_metrics_df[drift_metrics_df["stage"] == stage_idx]
+        label = f"stage {stage_idx} ({df_stage['base'].iloc[0]})"
+        plt.plot(df_stage["global_epoch"], df_stage["num_similarity_rules"], label=label)
+    plt.xlabel("Global epoch")
+    plt.ylabel("Number of similarity rules")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(drift_out_dir, "drift_num_rules_vs_epoch.png"), dpi=400)
+    plt.close()
+
+    # stage vs test accuracy per base (line plot)
+    pivot = stage_perf_df.pivot(index="stage", columns="test_base", values="test_accuracy")
+    pivot.to_csv(os.path.join(drift_out_dir, "drift_stage_vs_base_accuracy.csv"))
+
+    plt.figure()
+    for test_base in pivot.columns:
+        plt.plot(pivot.index.values, pivot[test_base].values, marker="o", label=f"test base {test_base}")
+    plt.xlabel("Stage")
+    plt.ylabel("Test accuracy")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(drift_out_dir, "drift_accuracy_per_base_vs_stage.png"), dpi=400)
+    plt.close()
+
+    console.print(
+        f"[green]Sequential drift experiment outputs saved in[/] {drift_out_dir}"
+    )
+# ===============================================================
+
+
 # ---------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------
@@ -432,6 +757,9 @@ def main():
     if not bases:
         console.print("[red]No complete bases found in data folder.[/]")
         return
+    if bases_limit is not None:
+        bases = bases[:bases_limit]
+        console.print(f"[yellow]Using first {len(bases)} bases due to config.bases_limit={bases_limit}[/]")
 
     console.print(f"Found [bold]{len(bases)}[/] bases:")
     for base, use_scaled in bases:
@@ -448,6 +776,7 @@ def main():
     # generator for deterministic emb_loader
     g = torch.Generator()
     g.manual_seed(SEED)
+    loader_workers = _suggest_num_workers()
 
     for base, use_scaled in bases:
         console.rule(f"[cyan]Base[/] {base}  (scaled={use_scaled})")
@@ -503,6 +832,8 @@ def main():
                 shuffle=False,
                 generator=g,
                 worker_init_fn=seed_worker,
+                num_workers=loader_workers,
+                persistent_workers=loader_workers > 0,
             )
 
             # Model
@@ -523,6 +854,7 @@ def main():
 
             # Logs
             epochs_list, train_sat_list, val_sat_list, val_acc_list = [], [], [], []
+            rule_count_list = []  # track number of similarity rules per epoch
 
             for epoch in trange(1, epochs + 1, desc=f"Training ({base}, fold {fold_idx})"):
                 model.train()
@@ -561,10 +893,20 @@ def main():
                 val_sat_list.append(val_sat)
                 val_acc_list.append(val_acc)
 
+                # refresh centroids/rules (after this epoch update)
+                centroids = recompute_centroids(model, emb_loader, device)
+                sim_preds = build_similarity_predicates(model, centroids)
+
+                # count active similarity rules after update
+                num_sim_rules = sum(len(lst) for lst in sim_preds)
+                rule_count_list.append(num_sim_rules)
+
                 console.print(
-                    f"Epoch {epoch:02d} • train_sat={train_sat:.4f} • val_sat={val_sat:.4f} • val_acc={val_acc:.4f}"
+                    f"Epoch {epoch:02d} • train_sat={train_sat:.4f} • val_sat={val_sat:.4f} "
+                    f"• val_acc={val_acc:.4f} • num_rules={num_sim_rules}"
                 )
 
+                # Early stopping bookkeeping
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
                     no_improve = 0
@@ -576,15 +918,11 @@ def main():
                     torch.save(model.state_dict(), best_path)
                     console.log(f"Saved best ({base}, fold {fold_idx}) acc={best_acc:.4f}")
 
-                # refresh centroids/rules
-                centroids = recompute_centroids(model, emb_loader, device)
-                sim_preds = build_similarity_predicates(model, centroids)
-
                 if no_improve >= patience:
                     console.log(f"[yellow]Early stopping[/] after {patience} epochs without val_loss improvement")
                     break
 
-            # Save per-epoch metrics for this fold
+            # Save per-epoch metrics for this fold (temporal evolution)
             metrics_df = pd.DataFrame(
                 {
                     "epoch": epochs_list,
@@ -593,13 +931,12 @@ def main():
                     "val_acc": val_acc_list,
                     "train_loss": [1.0 - s for s in train_sat_list],
                     "val_loss": [1.0 - s for s in val_sat_list],
+                    "num_similarity_rules": rule_count_list,
                 }
             )
             metrics_df.to_csv(os.path.join(metrics_dir, f"metrics_fold{fold_idx}.csv"), index=False)
 
             # Plots
-            import matplotlib.pyplot as plt
-
             plt.figure()
             plt.plot(epochs_list, metrics_df["train_loss"], label="train_loss")
             plt.plot(epochs_list, metrics_df["val_loss"], label="val_loss")
@@ -617,6 +954,35 @@ def main():
             plt.savefig(os.path.join(plots_dir, f"accuracy_fold{fold_idx}.png"), dpi=400)
             plt.close()
 
+            # Plot number of similarity rules vs epoch
+            plt.figure()
+            plt.plot(epochs_list, rule_count_list, label="num_similarity_rules")
+            plt.xlabel("Epoch")
+            plt.ylabel("Number of similarity rules")
+            plt.legend()
+            plt.savefig(os.path.join(plots_dir, f"rules_fold{fold_idx}.png"), dpi=400)
+            plt.close()
+
+            # --- NEW: summary statistics of rule dynamics for this fold ---
+            if rule_count_list:
+                num_epochs_this_fold = len(rule_count_list)
+                max_rules = int(max(rule_count_list))
+                min_rules = int(min(rule_count_list))
+                final_rules = int(rule_count_list[-1])
+                mean_rules = float(np.mean(rule_count_list))
+                std_rules = float(np.std(rule_count_list))
+                # stability on last 20% of epochs
+                k = max(1, int(0.2 * num_epochs_this_fold))
+                stable_segment = rule_count_list[-k:]
+                stable_mean_rules = float(np.mean(stable_segment))
+                stable_std_rules = float(np.std(stable_segment))
+            else:
+                num_epochs_this_fold = 0
+                max_rules = min_rules = final_rules = 0
+                mean_rules = std_rules = 0.0
+                stable_mean_rules = stable_std_rules = 0.0
+            # --------------------------------------------------------------
+
             # Evaluate best checkpoint for this fold
             model.load_state_dict(torch.load(best_path, map_location=device))
             model.eval()
@@ -633,20 +999,57 @@ def main():
             )
             acc = (np.array(labels) == np.array(preds)).mean()
 
-            fold_rows.append((fold_idx, acc, prec, rec, f1))
-            console.print(f"[bold]Fold {fold_idx}[/] Acc={acc:.4f}  P={prec:.4f}  R={rec:.4f}  F1={f1:.4f}")
+            # store per-fold summary including rule stats
+            fold_rows.append(
+                (
+                    fold_idx,
+                    acc,
+                    prec,
+                    rec,
+                    f1,
+                    num_epochs_this_fold,
+                    max_rules,
+                    min_rules,
+                    final_rules,
+                    mean_rules,
+                    std_rules,
+                    stable_mean_rules,
+                    stable_std_rules,
+                )
+            )
+            console.print(
+                f"[bold]Fold {fold_idx}[/] Acc={acc:.4f}  P={prec:.4f}  R={rec:.4f}  F1={f1:.4f}  "
+                f"final_rules={final_rules}  stable_mean_rules={stable_mean_rules:.1f}"
+            )
 
             # Per-fold classification report
             report = classification_report(labels, preds, output_dict=True, digits=4)
             report_df = pd.DataFrame(report).T.round(4)
             report_df.to_csv(os.path.join(reports_dir, f"classification_report_fold{fold_idx}.csv"))
 
-        # Per-base summary
+        # Per-base summary (now includes rule statistics by fold)
         if fold_rows:
             df = pd.DataFrame(
-                fold_rows, columns=["fold", "accuracy", "precision_macro", "recall_macro", "f1_macro"]
+                fold_rows,
+                columns=[
+                    "fold",
+                    "accuracy",
+                    "precision_macro",
+                    "recall_macro",
+                    "f1_macro",
+                    "epochs_trained",
+                    "max_num_rules",
+                    "min_num_rules",
+                    "final_num_rules",
+                    "mean_num_rules",
+                    "std_num_rules",
+                    "mean_num_rules_last_20pct",
+                    "std_num_rules_last_20pct",
+                ],
             )
             df.to_csv(os.path.join(base_out_dir, "cv_summary.csv"), index=False)
+
+            # keep global averages for standard metrics as before
             avg = df[["accuracy", "precision_macro", "recall_macro", "f1_macro"]].mean().to_dict()
             console.rule(f"[bold blue]Summary {base}[/]")
             console.print(
@@ -659,11 +1062,12 @@ def main():
             f"Outputs for [bold]{base}[/]:\n"
             f"  {base_out_dir}\n"
             f"   ├─ metrics/metrics_fold*.csv\n"
-            f"   ├─ plots/loss_fold*.png, accuracy_fold*.png\n"
-            f"   └─ reports/classification_report_fold*.csv"
+            f"   ├─ plots/loss_fold*.png, accuracy_fold*.png, rules_fold*.png\n"
+            f"   └─ reports/classification_report_fold*.csv\n"
+            f"   └─ cv_summary.csv (per-fold rule dynamics + performance)"
         )
 
-    # Overall summary across bases
+    # Overall summary across bases (standard metrics)
     if overall_rows:
         overall_df = pd.DataFrame(
             overall_rows, columns=["base", "accuracy", "precision_macro", "recall_macro", "f1_macro"]
@@ -675,6 +1079,84 @@ def main():
             f"Global avg → Acc={gavg['accuracy']:.4f}  P={gavg['precision_macro']:.4f}  "
             f"R={gavg['recall_macro']:.4f}  F1={gavg['f1_macro']:.4f}"
         )
+
+    # ================= DRIFT EXPERIMENT CALL =================
+    if RUN_DRIFT_EXPERIMENT:
+        """
+        TL;DR: Sequential operating-condition drift experiment.
+
+        What it does
+        ------------
+        - Uses ONE shared model.
+        - Stages = sorted bases (operating regimes), e.g. A → B → C → ...
+        - Stage 1: train on base A.
+        - Stage 2: continue from same weights, fine-tune on base B.
+        - Stage 3: continue, fine-tune on base C, etc.
+        - At each stage:
+            * Gradients see ONLY the current base (new operating condition).
+            * Similarity rules are recomputed on the UNION of all train data
+            from bases seen so far (A, then A+B, then A+B+C, ...).
+            * We log:
+                - train/val sat, losses, val accuracy,
+                - number of similarity rules per epoch,
+                - test accuracy on ALL seen bases so far.
+
+        Why (for the paper / rebuttal)
+        -------------------------------
+        - Simulates "operating-condition drift" in time: model is exposed
+        sequentially to different speeds/loads instead of training on a
+        static mixture.
+        - Lets us show:
+            * Temporal evolution of the rule base under drift.
+            * That the rule count grows then stabilizes (no explosion).
+            * That previously learned rules remain useful as new regimes
+            are added (stability and boundedness of merge/prune).
+            * Cross-domain generalization: performance on older regimes
+            remains high while accuracy on new regimes increases.
+
+        Where results are stored
+        ------------------------
+        All outputs are written under:
+            {results_root}/drift_experiment/
+
+        Main files:
+        - drift_metrics.csv
+            Per-epoch metrics during drift:
+                stage, base, global_epoch, local_epoch,
+                train_sat, val_sat, train_loss, val_loss,
+                val_acc, num_similarity_rules.
+            → Use for the main "num rules vs epoch" plot and temporal curves.
+
+        - drift_stage_rule_stats.csv
+            Per-stage rule statistics:
+                stage, added_base, epochs_trained_this_stage,
+                max_num_rules, min_num_rules, final_num_rules,
+                mean_num_rules, std_num_rules,
+                mean_num_rules_last_20pct, std_num_rules_last_20pct.
+            → Use for convergence/stability discussion (rule-base stability).
+
+        - drift_stage_performance.csv
+            Per (stage, test_base) test accuracy:
+                stage, train_bases_seen, test_base, test_accuracy.
+            → Use to build a table: stage × test_base accuracy.
+
+        - drift_stage_vs_base_accuracy.csv
+            Pivoted version: stage as rows, test_base as columns.
+            → Direct input for a "accuracy per base vs stage" figure.
+
+        - drift_num_rules_vs_epoch.png
+            Line plot: global_epoch vs num_similarity_rules,
+            colored by stage.
+            → Visual evidence that the rule base grows then stabilizes
+                across drift stages.
+
+        - drift_accuracy_per_base_vs_stage.png
+            Line plot: stage vs test_accuracy, one curve per test_base.
+            → Shows cross-domain generalization under drift:
+                old regimes stay good, new regimes improve with training.
+        """
+        run_drift_experiment(bases, device, Not, Forall, Implies, SatAgg)
+    # =========================================================
 
     console.print("\nDone.")
 
